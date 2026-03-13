@@ -4,52 +4,39 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LLVM_VERSION=15
 
 RUN apt-get update && apt-get install -y \
-    clang-${LLVM_VERSION} llvm-${LLVM_VERSION} lld-${LLVM_VERSION} \
+    clang-15 llvm-15 lld-15 \
     afl++ \
     git make cmake \
     python3 python3-pip \
     curl xxd \
     libstdc++-12-dev \
-    && ln -sf /usr/bin/clang-${LLVM_VERSION}    /usr/bin/clang \
-    && ln -sf /usr/bin/clang++-${LLVM_VERSION}  /usr/bin/clang++ \
-    && ln -sf /usr/bin/llvm-profdata-${LLVM_VERSION} /usr/bin/llvm-profdata \
-    && ln -sf /usr/bin/llvm-cov-${LLVM_VERSION}     /usr/bin/llvm-cov \
+    && ln -sf /usr/bin/clang-15      /usr/bin/clang \
+    && ln -sf /usr/bin/clang++-15    /usr/bin/clang++ \
+    && ln -sf /usr/bin/llvm-profdata-15 /usr/bin/llvm-profdata \
+    && ln -sf /usr/bin/llvm-cov-15      /usr/bin/llvm-cov \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone & build ISOBMFF with instrumentation
+# Clone ISOBMFF
 RUN git clone --depth=1 https://github.com/DigiDNA/ISOBMFF.git /opt/ISOBMFF
 
-RUN cd /opt/ISOBMFF && \
-    CXX=clang++ CC=clang \
+# Build ISOBMFF with coverage + sanitizers
+WORKDIR /opt/ISOBMFF
+RUN CXX=clang++ CC=clang \
     CXXFLAGS="-std=c++17 -fsanitize=address,undefined -fprofile-instr-generate -fcoverage-mapping -fno-omit-frame-pointer -g" \
-    make -j$(nproc) 2>&1 || true
+    make -j4 2>&1 | tail -20 || echo "[warn] partial build"
 
-# Copy fuzzer sources
+# Copy fuzzer harness + scripts
 COPY fuzzer/harness.cpp  /fuzzer/harness.cpp
 COPY fuzzer/Makefile     /fuzzer/Makefile
 COPY scripts/            /scripts/
-
 RUN chmod +x /scripts/*.sh
 
 # Build libFuzzer harness
-RUN cd /fuzzer && make libfuzzer 2>&1 || echo "[!] Build failed — check ISOBMFF build"
+WORKDIR /fuzzer
+RUN make libfuzzer 2>&1 | tail -10
 
-# Minimal MP4 corpus
-RUN mkdir -p /fuzzer/corpus && python3 -c "
-import struct
-def box(name, data=b''):
-    return struct.pack('>I', 8+len(data)) + name.encode() + data
-# minimal ftyp + mdat
-b = box('ftyp', b'mp41\x00\x00\x00\x00mp41') + box('mdat')
-open('/fuzzer/corpus/minimal.mp4','wb').write(b)
-# truncated file
-open('/fuzzer/corpus/truncated.mp4','wb').write(b'ftyp')
-# empty
-open('/fuzzer/corpus/empty.mp4','wb').write(b'')
-# all zeros
-open('/fuzzer/corpus/zeros.mp4','wb').write(b'\x00'*64)
-print('Corpus created')
-"
+# Create seed corpus
+RUN python3 /scripts/make_corpus.py
 
 WORKDIR /fuzzer
 
