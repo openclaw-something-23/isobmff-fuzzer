@@ -122,16 +122,23 @@ async def get_stats(request: Request):
         best_cov       = conn.execute("SELECT MAX(cov_lines_pct) FROM runs").fetchone()[0] or 0.0
         avg_speed      = conn.execute("SELECT AVG(execs_per_sec) FROM runs WHERE status='done'").fetchone()[0] or 0.0
         crash_types    = {r[0]: r[1] for r in conn.execute("SELECT crash_type, COUNT(*) FROM crashes GROUP BY crash_type")}
+
+    # Actual fuzzer status from Docker (not stale DB rows)
     try:
         fuzzer_status = subprocess.check_output(
             ["docker","inspect","--format","{{.State.Status}}","isobmff-fuzzer"],
             stderr=subprocess.DEVNULL).decode().strip()
     except Exception:
         fuzzer_status = "unknown"
+
+    # "running now" = 1 if container is actively running, else 0
+    running_now = 1 if fuzzer_status == "running" else 0
+
     return {"total_runs": total_runs, "total_crashes": total_crashes,
             "unique_crashes": unique_crashes, "best_score": best_score,
             "best_coverage_pct": round(best_cov, 2), "avg_execs_per_sec": round(avg_speed, 1),
             "crash_types": crash_types, "fuzzer_container": fuzzer_status,
+            "running": running_now,
             "updated_at": int(time.time())}
 
 # ── Runs ──────────────────────────────────────────────────────────────────────

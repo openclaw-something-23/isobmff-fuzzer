@@ -73,6 +73,12 @@ def get_db():
 def init_db():
     with get_db() as conn:
         conn.executescript(SCHEMA)
+    # On startup, mark all stale "running" rows as "interrupted"
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE runs SET status='interrupted'
+            WHERE status='running'
+        """)
 
 def scan_and_import_results(results_dir: str = "/results"):
     """Import any run metadata files not yet in DB."""
