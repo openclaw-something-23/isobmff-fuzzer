@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  # ─── Dashboard ──────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    container_name: isobmff-dashboard
+    ports:
+      - "56789:56789"
+    volumes:
+      - ./results:/results
+      - ./dashboard/static:/dashboard/static   # hot-reload UI
+    environment:
+      - DB_PATH=/results/fuzzer.db
+      - RESULTS_DIR=/results
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:56789/api/stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ─── Fuzzer (can be scaled: docker-compose up --scale fuzzer=4) ─
+  fuzzer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.fuzzer
+    container_name: isobmff-fuzzer
+    volumes:
+      - ./results:/results
+      - ./fuzzer/corpus:/fuzzer/corpus          # shared corpus
+      - ./fuzzer/crashes:/results/crashes       # crash artifacts
+    environment:
+      - DASHBOARD_API=http://dashboard:56789
+      - MAX_TOTAL_TIME=${FUZZ_TIME:-300}        # seconds per run
+      - MAX_LEN=${MAX_LEN:-65536}
+      - JOBS=${FUZZ_JOBS:-2}
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    # Run fuzzer in a loop
+    entrypoint: |
+      /bin/bash -c "
+        while true; do
+          /scripts/run_fuzzer.sh
+          echo '[*] Run complete. Sleeping 5s before next run...'
+          sleep 5
+        done
+      "
+    restart: unless-stopped
+    # Required for ASAN
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    ulimits:
+      core: 0
+
+volumes:
+  results:

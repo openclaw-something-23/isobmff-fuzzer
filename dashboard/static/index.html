@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐛 ISOBMFF Fuzzer Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --bg2: #161b22; --bg3: #1c2128;
+      --border: #30363d; --text: #e6edf3; --muted: #7d8590;
+      --green: #3fb950; --red: #f85149; --orange: #d29922;
+      --blue: #58a6ff; --purple: #a371f7; --cyan: #39d353;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    .live-dot {
+      width: 8px; height: 8px; background: var(--green); border-radius: 50%;
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:.3 } }
+    .header-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    .btn {
+      background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #2d333b; }
+    .btn-primary { background: #1f6feb; border-color: #1f6feb; }
+    .btn-primary:hover { background: #388bfd; }
+    #last-update { color: var(--muted); font-size: 0.78rem; }
+
+    /* ── Layout ── */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* ── Stat Cards ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 20px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .green { color: var(--green); }
+    .red   { color: var(--red);   }
+    .blue  { color: var(--blue);  }
+    .orange{ color: var(--orange);}
+    .purple{ color: var(--purple);}
+
+    /* ── Charts Row ── */
+    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px;
+    }
+    .chart-card h3 { font-size: 0.9rem; color: var(--muted); margin-bottom: 16px; font-weight: 600; }
+    .chart-wrap { height: 220px; position: relative; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab {
+      padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+      color: var(--muted); border: 1px solid transparent; transition: all 0.15s;
+    }
+    .tab.active { background: var(--bg3); border-color: var(--border); color: var(--text); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Table ── */
+    .table-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    thead th {
+      background: var(--bg3); padding: 10px 14px; text-align: left;
+      color: var(--muted); font-weight: 600; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg3); }
+    td { padding: 10px 14px; }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 600;
+    }
+    .badge-green  { background: #1a4731; color: var(--green); }
+    .badge-red    { background: #3d1a1a; color: var(--red);   }
+    .badge-orange { background: #3d2d08; color: var(--orange); }
+    .badge-blue   { background: #0d2545; color: var(--blue);  }
+    .badge-gray   { background: var(--bg3); color: var(--muted); }
+
+    /* Rank medal */
+    .rank-1 { color: #ffd700; font-weight: 800; }
+    .rank-2 { color: #c0c0c0; font-weight: 700; }
+    .rank-3 { color: #cd7f32; font-weight: 700; }
+
+    /* Score bar */
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+    .score-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; }
+    .score-bar-fill { height: 6px; border-radius: 3px; background: linear-gradient(90deg, #1f6feb, var(--purple)); transition: width 0.5s; }
+
+    /* Section hidden */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* Crash severity */
+    .sev-high   { color: var(--red); }
+    .sev-medium { color: var(--orange); }
+    .sev-low    { color: var(--muted); }
+
+    code { font-family: 'Courier New', monospace; font-size: 0.78rem; color: var(--cyan); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="live-dot"></div>
+  <h1>🐛 ISOBMFF Fuzzer Dashboard</h1>
+  <div class="header-right">
+    <span id="last-update">–</span>
+    <button class="btn" onclick="rescan()">🔄 Rescan</button>
+    <button class="btn btn-primary" onclick="refresh()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total Runs</div><div class="stat-value blue" id="s-runs">–</div></div>
+    <div class="stat-card"><div class="stat-label">Unique Crashes</div><div class="stat-value red" id="s-crashes">–</div></div>
+    <div class="stat-card"><div class="stat-label">Best Coverage</div><div class="stat-value green" id="s-cov">–</div><div class="stat-sub">line coverage %</div></div>
+    <div class="stat-card"><div class="stat-label">Best Score</div><div class="stat-value purple" id="s-score">–</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Speed</div><div class="stat-value orange" id="s-speed">–</div><div class="stat-sub">exec/sec</div></div>
+    <div class="stat-card"><div class="stat-label">Running Now</div><div class="stat-value" id="s-running">–</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📈 COVERAGE OVER TIME</h3>
+      <div class="chart-wrap"><canvas id="chart-cov"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>💥 CRASH TYPES</h3>
+      <div class="chart-wrap"><canvas id="chart-crashes"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('leaderboard', this)">🏆 Leaderboard</div>
+    <div class="tab" onclick="switchTab('runs', this)">📋 All Runs</div>
+    <div class="tab" onclick="switchTab('crashes', this)">💥 Crashes</div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="sec-leaderboard" class="section active">
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Run ID</th>
+            <th>Score</th>
+            <th>Coverage</th>
+            <th>Crashes</th>
+            <th>Speed</th>
+            <th>Duration</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="tb-leaderboard"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- All Runs -->
+  <div id="sec-runs" class="section">
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Status</th>
+            <th>Score</th>
+            <th>Cov Lines %</th>
+            <th>Cov Edges</th>
+            <th>Crashes</th>
+            <th>Exec/s</th>
+            <th>Duration</th>
+            <th>Started</th>
+          </tr>
+        </thead>
+        <tbody id="tb-runs"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Crashes -->
+  <div id="sec-crashes" class="section">
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Severity</th>
+            <th>Stack Hash</th>
+            <th>Run ID</th>
+            <th>Size</th>
+            <th>Unique</th>
+            <th>Found</th>
+          </tr>
+        </thead>
+        <tbody id="tb-crashes"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let maxScore = 1;
+let charts = {};
+
+// ── Helpers ───────────────────────────────────────
+function fmt_date(ts) {
+  if (!ts) return '–';
+  return new Date(ts * 1000).toLocaleString('en-GB', {
+    month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'
+  });
+}
+function fmt_dur(sec) {
+  if (!sec) return '–';
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.floor(sec/60)}m ${sec%60}s`;
+  return `${Math.floor(sec/3600)}h ${Math.floor((sec%3600)/60)}m`;
+}
+function badge(text, type) {
+  return `<span class="badge badge-${type}">${text}</span>`;
+}
+function sev_class(s) {
+  return s >= 80 ? 'sev-high' : s >= 50 ? 'sev-medium' : 'sev-low';
+}
+function crash_badge(type) {
+  const map = {
+    'heap-buffer-overflow': 'red',
+    'stack-buffer-overflow': 'red',
+    'use-after-free': 'red',
+    'segfault': 'orange',
+    'undefined-behavior': 'orange',
+    'division-by-zero': 'orange',
+  };
+  return badge(type || 'unknown', map[type] || 'gray');
+}
+function rank_class(r) {
+  return r === 1 ? 'rank-1' : r === 2 ? 'rank-2' : r === 3 ? 'rank-3' : '';
+}
+function rank_icon(r) {
+  return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`;
+}
+
+// ── Score bar ─────────────────────────────────────
+function score_bar(score) {
+  const pct = maxScore > 0 ? Math.min(100, (score / maxScore) * 100) : 0;
+  return `<div class="score-bar-wrap">
+    <strong style="min-width:50px">${score.toLocaleString()}</strong>
+    <div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+// ── Charts ────────────────────────────────────────
+function initCharts() {
+  const base = { responsive: true, maintainAspectRatio: false };
+  const gridColor = '#30363d';
+
+  // Coverage timeline
+  const ctxCov = document.getElementById('chart-cov').getContext('2d');
+  charts.cov = new Chart(ctxCov, {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Lines %',  data: [], borderColor: '#3fb950', tension: 0.3, fill: true, backgroundColor: 'rgba(63,185,80,0.1)' },
+      { label: 'Funcs %',  data: [], borderColor: '#58a6ff', tension: 0.3, fill: false },
+    ]},
+    options: { ...base, plugins: { legend: { labels: { color: '#7d8590', boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#7d8590', maxTicksLimit: 8 }, grid: { color: gridColor } },
+        y: { ticks: { color: '#7d8590', callback: v => v + '%' }, grid: { color: gridColor }, min: 0, max: 100 }
+      }
+    }
+  });
+
+  // Crash types donut
+  const ctxCrash = document.getElementById('chart-crashes').getContext('2d');
+  charts.crash = new Chart(ctxCrash, {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [],
+      backgroundColor: ['#f85149','#d29922','#3fb950','#58a6ff','#a371f7','#39d353','#ec6547'],
+      borderColor: '#161b22', borderWidth: 2
+    }]},
+    options: { ...base, plugins: {
+      legend: { position: 'right', labels: { color: '#7d8590', boxWidth: 12, padding: 10 } }
+    }}
+  });
+}
+
+function updateCovChart(timeline) {
+  if (!timeline.length) return;
+  charts.cov.data.labels = timeline.map((r, i) => `Run ${i+1}`);
+  charts.cov.data.datasets[0].data = timeline.map(r => r.cov_lines_pct || 0);
+  charts.cov.data.datasets[1].data = timeline.map(r => r.cov_funcs_pct || 0);
+  charts.cov.update();
+}
+
+function updateCrashChart(types) {
+  const labels = Object.keys(types);
+  const values = Object.values(types);
+  if (!labels.length) return;
+  charts.crash.data.labels = labels;
+  charts.crash.data.datasets[0].data = values;
+  charts.crash.update();
+}
+
+// ── Data loaders ──────────────────────────────────
+async function loadStats() {
+  const s = await fetch(`${API}/api/stats`).then(r => r.json()).catch(() => null);
+  if (!s) return;
+  document.getElementById('s-runs').textContent    = s.total_runs;
+  document.getElementById('s-crashes').textContent = s.unique_crashes;
+  document.getElementById('s-cov').textContent     = (s.best_coverage_pct || 0).toFixed(1) + '%';
+  document.getElementById('s-score').textContent   = (s.best_score || 0).toLocaleString();
+  document.getElementById('s-speed').textContent   = Math.round(s.avg_execs_per_sec || 0).toLocaleString();
+  document.getElementById('s-running').innerHTML   = s.running > 0
+    ? `<span class="green">${s.running}</span>`
+    : `<span class="stat-value" style="color:var(--muted)">0</span>`;
+  if (s.crash_types) updateCrashChart(s.crash_types);
+  document.getElementById('last-update').textContent = '↺ ' + new Date().toLocaleTimeString();
+}
+
+async function loadLeaderboard() {
+  const data = await fetch(`${API}/api/leaderboard?limit=20`).then(r => r.json()).catch(() => []);
+  if (!data.length) { document.getElementById('tb-leaderboard').innerHTML = emptyRow(8, 'No runs yet'); return; }
+  maxScore = data[0].score || 1;
+  document.getElementById('tb-leaderboard').innerHTML = data.map(r => `
+    <tr>
+      <td><span class="${rank_class(r.rank)}">${rank_icon(r.rank)}</span></td>
+      <td><code>${r.run_id}</code></td>
+      <td>${score_bar(r.score)}</td>
+      <td><span class="green">${(r.cov_lines_pct || 0).toFixed(1)}%</span></td>
+      <td>${r.crashes > 0 ? `<span class="red">${r.crashes}</span>` : '0'}</td>
+      <td>${(r.execs_per_sec || 0).toLocaleString()}/s</td>
+      <td>${fmt_dur(r.duration_sec)}</td>
+      <td style="color:var(--muted)">${fmt_date(r.started_at)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadRuns() {
+  const { runs } = await fetch(`${API}/api/runs?limit=50&sort=started_at`).then(r => r.json()).catch(() => ({runs:[]}));
+  if (!runs.length) { document.getElementById('tb-runs').innerHTML = emptyRow(9, 'No runs yet'); return; }
+  document.getElementById('tb-runs').innerHTML = runs.map(r => `
+    <tr>
+      <td><code style="font-size:0.75rem">${r.run_id}</code></td>
+      <td>${r.status === 'running' ? badge('running', 'blue') : r.status === 'done' ? badge('done', 'green') : badge(r.status, 'gray')}</td>
+      <td>${(r.score || 0).toLocaleString()}</td>
+      <td><span class="green">${(r.cov_lines_pct || 0).toFixed(1)}%</span></td>
+      <td>${(r.cov_edges || 0).toLocaleString()}</td>
+      <td>${r.crashes > 0 ? `<span class="red">${r.crashes}</span>` : '0'}</td>
+      <td>${(r.execs_per_sec || 0).toLocaleString()}</td>
+      <td>${fmt_dur(r.duration_sec)}</td>
+      <td style="color:var(--muted)">${fmt_date(r.started_at)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadCrashes() {
+  const { crashes } = await fetch(`${API}/api/crashes?limit=100`).then(r => r.json()).catch(() => ({crashes:[]}));
+  if (!crashes.length) { document.getElementById('tb-crashes').innerHTML = emptyRow(7, 'No crashes found 🎉'); return; }
+  document.getElementById('tb-crashes').innerHTML = crashes.map(c => `
+    <tr>
+      <td>${crash_badge(c.crash_type)}</td>
+      <td><span class="${sev_class(c.severity)}">${c.severity}/100</span></td>
+      <td><code>${c.stack_hash || '–'}</code></td>
+      <td><code style="font-size:0.72rem">${(c.run_id || '').substring(0,20)}</code></td>
+      <td>${c.input_size ? c.input_size + 'B' : '–'}</td>
+      <td>${c.is_unique ? badge('unique', 'red') : badge('dup', 'gray')}</td>
+      <td style="color:var(--muted)">${fmt_date(c.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadTimeline() {
+  const data = await fetch(`${API}/api/coverage/timeline`).then(r => r.json()).catch(() => []);
+  if (data.length) updateCovChart(data);
+}
+
+function emptyRow(cols, msg) {
+  return `<tr><td colspan="${cols}" class="empty"><div class="icon">📭</div>${msg}</td></tr>`;
+}
+
+// ── Tab switching ─────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`sec-${name}`).classList.add('active');
+  if (name === 'leaderboard') loadLeaderboard();
+  if (name === 'runs') loadRuns();
+  if (name === 'crashes') loadCrashes();
+}
+
+// ── Refresh / rescan ──────────────────────────────
+async function refresh() {
+  await Promise.all([loadStats(), loadLeaderboard(), loadTimeline()]);
+}
+
+async function rescan() {
+  await fetch(`${API}/api/rescan`, { method: 'POST' });
+  setTimeout(refresh, 1500);
+}
+
+// ── Init ──────────────────────────────────────────
+initCharts();
+refresh();
+setInterval(refresh, 15000); // auto-refresh every 15s
+</script>
+</body>
+</html>

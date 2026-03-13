@@ -1,0 +1,30 @@
+# Build artifacts
+fuzzer/fuzz_isobmff
+fuzzer/fuzz_isobmff_afl
+*.o *.a
+
+# Large result files (crashes, coverage html) — keep only metadata
+results/crashes/*.mp4
+results/crashes/*.mov
+results/crashes/*.bin
+results/coverage/*.html
+results/coverage/*.profdata
+results/coverage/*.profraw
+
+# But keep metadata
+!results/runs/**/meta.json
+!results/crashes/*.json
+!results/coverage/*_lines.txt
+!results/coverage/*_funcs.txt
+!results/coverage/*_summary.json
+
+# DB (regenerated from files)
+results/fuzzer.db
+results/fuzzer.db-*
+
+# Temp
+/tmp/*.profraw
+/tmp/*.profdata
+__pycache__/
+*.pyc
+.env
