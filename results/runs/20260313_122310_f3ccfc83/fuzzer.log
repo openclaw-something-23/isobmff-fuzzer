@@ -1,0 +1,43 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 732686655
+INFO: Loaded 1 modules   (246 inline 8-bit counters): 246 [0x5ed46f0d47b0, 0x5ed46f0d48a6), 
+INFO: Loaded 1 PC tables (246 PCs): 246 [0x5ed46f0d48a8,0x5ed46f0d5808), 
+INFO:       34 files found in /fuzzer/corpus
+INFO: seed corpus: files: 34 min: 1b max: 124b total: 1526b rss: 33Mb
+#35	INITED cov: 108 ft: 249 corp: 17/641b exec/s: 0 rss: 38Mb
+#36	NEW    cov: 108 ft: 250 corp: 18/652b lim: 95 exec/s: 0 rss: 38Mb L: 11/95 MS: 1 EraseBytes-
+==18== ERROR: libFuzzer: out-of-memory (used: 558Mb; limit: 512Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+Live Heap Allocations: 4319271879 bytes in 428 chunks; quarantined: 1314620 bytes in 6885 chunks; 7133 other chunks; total chunks: 14446; showing top 95% (at most 8 unique contexts)
+4294967288 byte(s) (99%) in 1 allocation(s)
+    #0 0x5ed46ef2d98d in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28c98d) (BuildId: b31634ad386fbaf8)
+    #1 0x5ed46ef359c1 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_allocate(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:378:20
+    #2 0x5ed46ef359c1 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_create_storage(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:395:33
+    #3 0x5ed46ef3a66b in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_Vector_base(unsigned long, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:332:9
+    #4 0x5ed46ef3a66b in std::vector<unsigned char, std::allocator<unsigned char>>::vector(unsigned long, unsigned char const&, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:566:9
+    #5 0x5ed46ef36412 in ISOBMFF::BinaryStream::Read(unsigned long) /opt/ISOBMFF/ISOBMFF/source/BinaryStream.cpp:73:32
+    #6 0x5ed46ef3bfcf in ISOBMFF::ContainerBox::ReadData(ISOBMFF::Parser&, ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/ContainerBox.cpp:126:60
+    #7 0x5ed46ef498e5 in ISOBMFF::Parser::Parse(ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:217:32
+    #8 0x5ed46ef48ca5 in ISOBMFF::Parser::Parse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:169:15
+    #9 0x5ed46ef3062e in parse_isobmff(unsigned char const*, unsigned long) /fuzzer/harness.cpp:75:16
+    #10 0x5ed46ef3062e in LLVMFuzzerTestOneInput /fuzzer/harness.cpp:117:5
+    #11 0x5ed46ee54c42 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) crtstuff.c
+    #12 0x5ed46ee54355 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) crtstuff.c
+    #13 0x5ed46ee55bd7 in fuzzer::Fuzzer::MutateAndTestOne() crtstuff.c
+    #14 0x5ed46ee567d5 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #15 0x5ed46ee44892 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #16 0x5ed46ee6dde2 in main (/fuzzer/fuzz_isobmff+0x1ccde2) (BuildId: b31634ad386fbaf8)
+    #17 0x7ec59dfe6d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+MS: 1 InsertRepeatedBytes-; base unit: 09c4d0b837b442fb510c46c84fc8bb88d14b9c7a
+0x0,0x0,0x0,0x14,0x66,0x74,0x79,0x70,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x0,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x8,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x6d,0x64,0x61,0x74,0x13,
+\000\000\000\024ftypmp41\000\000\000\000mp41\000\000\000\010\000\000\000\000\000\000\000\000mdat\023
+artifact_prefix='/results/crashes/20260313_122310_f3ccfc83_'; Test unit written to /results/crashes/20260313_122310_f3ccfc83_oom-264c6bc2fbf80474ad12492ff37e8d9f597ff143
+Base64: AAAAFGZ0eXBtcDQxAAAAAG1wNDEAAAAIAAAAAAAAAABtZGF0Ew==
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 57
+stat::average_exec_per_sec:     57
+stat::new_units_added:          1
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              561

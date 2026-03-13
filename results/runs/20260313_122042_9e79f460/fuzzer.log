@@ -1,0 +1,50 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3486542863
+INFO: Loaded 1 modules   (197 inline 8-bit counters): 197 [0x5e7245ff0bb8, 0x5e7245ff0c7d), 
+INFO: Loaded 1 PC tables (197 PCs): 197 [0x5e7245ff0c80,0x5e7245ff18d0), 
+INFO:       10 files found in /fuzzer/corpus
+INFO: seed corpus: files: 10 min: 2b max: 124b total: 529b rss: 33Mb
+#11	INITED cov: 81 ft: 142 corp: 6/320b exec/s: 0 rss: 36Mb
+#12	NEW    cov: 81 ft: 143 corp: 7/342b lim: 124 exec/s: 0 rss: 36Mb L: 22/124 MS: 1 ChangeBinInt-
+#49	REDUCE cov: 81 ft: 143 corp: 7/312b lim: 124 exec/s: 0 rss: 39Mb L: 85/124 MS: 2 ChangeBit-CrossOver-
+==18== ERROR: libFuzzer: out-of-memory (used: 929Mb; limit: 512Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+Live Heap Allocations: 164370776 bytes in 297 chunks; quarantined: 140111926 bytes in 242 chunks; 11901 other chunks; total chunks: 12440; showing top 95% (at most 8 unique contexts)
+140078440 byte(s) (85%) in 1 allocation(s)
+    #0 0x5e7245e4acbd in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28bcbd) (BuildId: fec8d58ecb896053)
+    #1 0x5e7245e51f91 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_allocate(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:378:20
+    #2 0x5e7245e51f91 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_create_storage(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:395:33
+    #3 0x5e7245e56c8b in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_Vector_base(unsigned long, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:332:9
+    #4 0x5e7245e56c8b in std::vector<unsigned char, std::allocator<unsigned char>>::vector(unsigned long, unsigned char const&, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:566:9
+    #5 0x5e7245e52a32 in ISOBMFF::BinaryStream::Read(unsigned long) /opt/ISOBMFF/ISOBMFF/source/BinaryStream.cpp:73:32
+    #6 0x5e7245e5894f in ISOBMFF::ContainerBox::ReadData(ISOBMFF::Parser&, ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/ContainerBox.cpp:126:60
+    #7 0x5e7245e66265 in ISOBMFF::Parser::Parse(ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:217:32
+    #8 0x5e7245e65625 in ISOBMFF::Parser::Parse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:169:15
+    #9 0x5e7245e4d879 in parse_isobmff(unsigned char const*, unsigned long) /fuzzer/harness.cpp:41:16
+    #10 0x5e7245e4d879 in LLVMFuzzerTestOneInput /fuzzer/harness.cpp:83:5
+    #11 0x5e7245d71f72 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) crtstuff.c
+    #12 0x5e7245d71685 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) crtstuff.c
+    #13 0x5e7245d72f07 in fuzzer::Fuzzer::MutateAndTestOne() crtstuff.c
+    #14 0x5e7245d73b05 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #15 0x5e7245d61bc2 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #16 0x5e7245d8b112 in main (/fuzzer/fuzz_isobmff+0x1cc112) (BuildId: fec8d58ecb896053)
+    #17 0x7cc62c637d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+20971840 byte(s) (12%) in 1 allocation(s)
+    #0 0x5e7245e4acbd in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28bcbd) (BuildId: fec8d58ecb896053)
+    #1 0x5e7245d61166 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #2 0x5e7245d8b112 in main (/fuzzer/fuzz_isobmff+0x1cc112) (BuildId: fec8d58ecb896053)
+    #3 0x7cc62c637d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+MS: 5 CopyPart-InsertByte-CopyPart-CopyPart-ChangeASCIIInt-; base unit: 721231b930f77dd63c49bd6f6fc515dcd0286125
+0x0,0x0,0x0,0x14,0x66,0x74,0x79,0x70,0x6d,0x70,0x34,0x31,0x0,0x0,0x70,0x34,0x31,0x0,0x0,0x0,0x8,0x59,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x0,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x8,0x59,0x6d,0x64,0x61,0x0,0x0,0x6d,0x70,0x64,0x61,0x0,0x0,0x6d,0x70,0x34,0x30,0x0,0x0,0x0,0x8,0x6d,0x74,0x8,0x6d,0x74,
+\000\000\000\024ftypmp41\000\000p41\000\000\000\010Ymp41\000\000\000\000mp41\000\000\000\010Ymda\000\000mpda\000\000mp40\000\000\000\010mt\010mt
+artifact_prefix='/results/crashes/20260313_122042_9e79f460_'; Test unit written to /results/crashes/20260313_122042_9e79f460_oom-dc798cb2dbbde0f710c3c0ed175a750a33b5da91
+Base64: AAAAFGZ0eXBtcDQxAABwNDEAAAAIWW1wNDEAAAAAbXA0MQAAAAhZbWRhAABtcGRhAABtcDQwAAAACG10CG10
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 54
+stat::average_exec_per_sec:     54
+stat::new_units_added:          2
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              929

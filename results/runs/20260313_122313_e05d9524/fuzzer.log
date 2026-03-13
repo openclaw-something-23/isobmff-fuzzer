@@ -1,0 +1,49 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4261030248
+INFO: Loaded 1 modules   (246 inline 8-bit counters): 246 [0x5e1788abd7b0, 0x5e1788abd8a6), 
+INFO: Loaded 1 PC tables (246 PCs): 246 [0x5e1788abd8a8,0x5e1788abe808), 
+INFO:       35 files found in /fuzzer/corpus
+INFO: seed corpus: files: 35 min: 1b max: 124b total: 1537b rss: 33Mb
+#36	INITED cov: 109 ft: 250 corp: 18/661b exec/s: 0 rss: 38Mb
+#37	NEW    cov: 109 ft: 251 corp: 19/756b lim: 95 exec/s: 0 rss: 38Mb L: 95/95 MS: 1 ShuffleBytes-
+#80	NEW    cov: 109 ft: 252 corp: 20/816b lim: 95 exec/s: 0 rss: 41Mb L: 60/95 MS: 3 InsertByte-EraseBytes-InsertRepeatedBytes-
+#84	NEW    cov: 109 ft: 253 corp: 21/888b lim: 95 exec/s: 0 rss: 41Mb L: 72/95 MS: 4 ChangeByte-ChangeBinInt-CopyPart-InsertByte-
+#109	REDUCE cov: 109 ft: 253 corp: 21/796b lim: 95 exec/s: 0 rss: 42Mb L: 3/95 MS: 5 ChangeByte-ChangeByte-ChangeBit-ShuffleBytes-CrossOver-
+#128	REDUCE cov: 109 ft: 253 corp: 21/795b lim: 95 exec/s: 0 rss: 43Mb L: 47/95 MS: 4 CopyPart-ChangeBinInt-CMP-EraseBytes- DE: "cdsc"-
+#143	REDUCE cov: 109 ft: 253 corp: 21/793b lim: 95 exec/s: 0 rss: 44Mb L: 42/95 MS: 5 InsertByte-CMP-ChangeBit-CopyPart-EraseBytes- DE: "Qb\000\000@`\000\000"-
+#151	NEW    cov: 109 ft: 254 corp: 22/887b lim: 95 exec/s: 0 rss: 44Mb L: 94/95 MS: 3 CMP-ChangeByte-CopyPart- DE: "\000\000\000\035"-
+==18== ERROR: libFuzzer: out-of-memory (used: 659Mb; limit: 512Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+Live Heap Allocations: 4319284133 bytes in 504 chunks; quarantined: 2948461 bytes in 17590 chunks; 6162 other chunks; total chunks: 24256; showing top 95% (at most 8 unique contexts)
+4294967294 byte(s) (99%) in 1 allocation(s)
+    #0 0x5e178891698d in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28c98d) (BuildId: b31634ad386fbaf8)
+    #1 0x5e178891e9c1 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_allocate(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:378:20
+    #2 0x5e178891e9c1 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_create_storage(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:395:33
+    #3 0x5e178892366b in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_Vector_base(unsigned long, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:332:9
+    #4 0x5e178892366b in std::vector<unsigned char, std::allocator<unsigned char>>::vector(unsigned long, unsigned char const&, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:566:9
+    #5 0x5e178891f412 in ISOBMFF::BinaryStream::Read(unsigned long) /opt/ISOBMFF/ISOBMFF/source/BinaryStream.cpp:73:32
+    #6 0x5e1788924fcf in ISOBMFF::ContainerBox::ReadData(ISOBMFF::Parser&, ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/ContainerBox.cpp:126:60
+    #7 0x5e17889328e5 in ISOBMFF::Parser::Parse(ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:217:32
+    #8 0x5e1788931ca5 in ISOBMFF::Parser::Parse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:169:15
+    #9 0x5e178891962e in parse_isobmff(unsigned char const*, unsigned long) /fuzzer/harness.cpp:75:16
+    #10 0x5e178891962e in LLVMFuzzerTestOneInput /fuzzer/harness.cpp:117:5
+    #11 0x5e178883dc42 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) crtstuff.c
+    #12 0x5e178883d355 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) crtstuff.c
+    #13 0x5e178883ebd7 in fuzzer::Fuzzer::MutateAndTestOne() crtstuff.c
+    #14 0x5e178883f7d5 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #15 0x5e178882d892 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #16 0x5e1788856de2 in main (/fuzzer/fuzz_isobmff+0x1ccde2) (BuildId: b31634ad386fbaf8)
+    #17 0x78f8f9779d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+MS: 1 CrossOver-; base unit: 2e8ac97b2fe73d7e0a03b13da9b0e457e3e2bbdf
+0x0,0x0,0x0,0x14,0x66,0x74,0x79,0x70,0x6d,0x70,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x6,0x0,0x0,0x0,0xf0,0x13,0x63,0x64,0x73,0x63,0x0,0x0,0x0,0x0,0x63,0x43,0x0,0x0,0x0,0x0,0xf0,0x13,0x0,0x0,0xb0,0x0,0x0,0x0,0x34,0x31,0x34,0x31,0x0,0x0,0x0,0x8,0x6d,0x64,0x61,0x74,
+\000\000\000\024ftypmp\000\000\000\000\000\000\000\000\000\000\000\000\000\006\000\000\000\360\023cdsc\000\000\000\000cC\000\000\000\000\360\023\000\000\260\000\000\0004141\000\000\000\010mdat
+artifact_prefix='/results/crashes/20260313_122313_e05d9524_'; Test unit written to /results/crashes/20260313_122313_e05d9524_oom-449be7ea595460ea931e8875ad996c5ceb5f0812
+Base64: AAAAFGZ0eXBtcAAAAAAAAAAAAAAAAAAGAAAA8BNjZHNjAAAAAGNDAAAAAPATAACwAAAANDE0MQAAAAhtZGF0
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 152
+stat::average_exec_per_sec:     152
+stat::new_units_added:          7
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              661

@@ -10,9 +10,9 @@ CRASHES_DIR="${ROOT}/results/crashes"
 HARNESS="${ROOT}/fuzzer/fuzz_isobmff"
 DASHBOARD_API="${DASHBOARD_API:-http://localhost:56789}"
 
-CRASH_FILES=("${CRASHES_DIR}/${RUN_ID}_"* 2>/dev/null) || true
+mapfile -t CRASH_FILES < <(ls "${CRASHES_DIR}/${RUN_ID}_"* 2>/dev/null | grep -v '\.json$' || true)
 
-if [ ${#CRASH_FILES[@]} -eq 0 ] || [ ! -e "${CRASH_FILES[0]}" ]; then
+if [ ${#CRASH_FILES[@]} -eq 0 ]; then
     echo "[*] No crashes to analyze for ${RUN_ID}"
     exit 0
 fi

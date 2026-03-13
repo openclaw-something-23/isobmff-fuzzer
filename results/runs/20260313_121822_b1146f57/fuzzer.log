@@ -1,0 +1,100 @@
+/fuzzer/fuzz_isobmff /fuzzer/corpus -artifact_prefix=/results/crashes/20260313_121822_b1146f57_ -max_total_time=300 -max_len=65536 -rss_limit_mb=512 -malloc_limit_mb=256 -print_final_stats=1 >fuzz-1.log 2>&1
+/fuzzer/fuzz_isobmff /fuzzer/corpus -artifact_prefix=/results/crashes/20260313_121822_b1146f57_ -max_total_time=300 -max_len=65536 -rss_limit_mb=512 -malloc_limit_mb=256 -print_final_stats=1 >fuzz-0.log 2>&1
+================== Job 1 exited with exit code 71 ============
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 954033749
+INFO: Loaded 1 modules   (197 inline 8-bit counters): 197 [0x5f9ebc524bb8, 0x5f9ebc524c7d), 
+INFO: Loaded 1 PC tables (197 PCs): 197 [0x5f9ebc524c80,0x5f9ebc5258d0), 
+INFO:        9 files found in /fuzzer/corpus
+INFO: seed corpus: files: 9 min: 1b max: 124b total: 357b rss: 34Mb
+==25== ERROR: libFuzzer: out-of-memory (malloc(4294967287))
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+    #0 0x5f9ebc34eac1 in __sanitizer_print_stack_trace (/fuzzer/fuzz_isobmff+0x25bac1) (BuildId: fec8d58ecb896053)
+    #1 0x5f9ebc2be828 in fuzzer::PrintStackTrace() crtstuff.c
+    #2 0x5f9ebc2a3c05 in fuzzer::Fuzzer::HandleMalloc(unsigned long) crtstuff.c
+    #3 0x5f9ebc2a3b1a in fuzzer::MallocHook(void const volatile*, unsigned long) crtstuff.c
+    #4 0x5f9ebc355682 in __sanitizer::RunMallocHooks(void*, unsigned long) crtstuff.c
+    #5 0x5f9ebc2c1b6b in __asan::Allocator::Allocate(unsigned long, unsigned long, __sanitizer::BufferedStackTrace*, __asan::AllocType, bool) crtstuff.c
+    #6 0x5f9ebc2c21c9 in __asan::asan_memalign(unsigned long, unsigned long, __sanitizer::BufferedStackTrace*, __asan::AllocType) crtstuff.c
+    #7 0x5f9ebc37ed23 in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28bd23) (BuildId: fec8d58ecb896053)
+    #8 0x5f9ebc385f91 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_allocate(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:378:20
+    #9 0x5f9ebc385f91 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_create_storage(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:395:33
+    #10 0x5f9ebc38ac8b in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_Vector_base(unsigned long, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:332:9
+    #11 0x5f9ebc38ac8b in std::vector<unsigned char, std::allocator<unsigned char>>::vector(unsigned long, unsigned char const&, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:566:9
+    #12 0x5f9ebc386a32 in ISOBMFF::BinaryStream::Read(unsigned long) /opt/ISOBMFF/ISOBMFF/source/BinaryStream.cpp:73:32
+    #13 0x5f9ebc38c94f in ISOBMFF::ContainerBox::ReadData(ISOBMFF::Parser&, ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/ContainerBox.cpp:126:60
+    #14 0x5f9ebc39a265 in ISOBMFF::Parser::Parse(ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:217:32
+    #15 0x5f9ebc399625 in ISOBMFF::Parser::Parse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:169:15
+    #16 0x5f9ebc381879 in parse_isobmff(unsigned char const*, unsigned long) /fuzzer/harness.cpp:41:16
+    #17 0x5f9ebc381879 in LLVMFuzzerTestOneInput /fuzzer/harness.cpp:83:5
+    #18 0x5f9ebc2a5f72 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) crtstuff.c
+    #19 0x5f9ebc2a5685 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) crtstuff.c
+    #20 0x5f9ebc2a7412 in fuzzer::Fuzzer::ReadAndExecuteSeedCorpora(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #21 0x5f9ebc2a78f3 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #22 0x5f9ebc295bc2 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #23 0x5f9ebc2bf112 in main (/fuzzer/fuzz_isobmff+0x1cc112) (BuildId: fec8d58ecb896053)
+    #24 0x773d072a8d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #25 0x773d072a8e3f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e3f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #26 0x5f9ebc28a774 in _start (/fuzzer/fuzz_isobmff+0x197774) (BuildId: fec8d58ecb896053)
+
+MS: 0 ; base unit: 0000000000000000000000000000000000000000
+0xff,0xff,0xff,0xff,0x66,0x74,0x79,0x70,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x0,
+\377\377\377\377ftypmp41\000\000\000\000
+artifact_prefix='/results/crashes/20260313_121822_b1146f57_'; Test unit written to /results/crashes/20260313_121822_b1146f57_oom-8dad897ad522e6c910a8595a3e25cc456cde5906
+Base64: /////2Z0eXBtcDQxAAAAAA==
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 4
+stat::average_exec_per_sec:     0
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              547
+================== Job 0 exited with exit code 71 ============
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 954136877
+INFO: Loaded 1 modules   (197 inline 8-bit counters): 197 [0x57e2937d5bb8, 0x57e2937d5c7d), 
+INFO: Loaded 1 PC tables (197 PCs): 197 [0x57e2937d5c80,0x57e2937d68d0), 
+INFO:        9 files found in /fuzzer/corpus
+INFO: seed corpus: files: 9 min: 1b max: 124b total: 357b rss: 33Mb
+==26== ERROR: libFuzzer: out-of-memory (malloc(4294967287))
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+    #0 0x57e2935ffac1 in __sanitizer_print_stack_trace (/fuzzer/fuzz_isobmff+0x25bac1) (BuildId: fec8d58ecb896053)
+    #1 0x57e29356f828 in fuzzer::PrintStackTrace() crtstuff.c
+    #2 0x57e293554c05 in fuzzer::Fuzzer::HandleMalloc(unsigned long) crtstuff.c
+    #3 0x57e293554b1a in fuzzer::MallocHook(void const volatile*, unsigned long) crtstuff.c
+    #4 0x57e293606682 in __sanitizer::RunMallocHooks(void*, unsigned long) crtstuff.c
+    #5 0x57e293572b6b in __asan::Allocator::Allocate(unsigned long, unsigned long, __sanitizer::BufferedStackTrace*, __asan::AllocType, bool) crtstuff.c
+    #6 0x57e2935731c9 in __asan::asan_memalign(unsigned long, unsigned long, __sanitizer::BufferedStackTrace*, __asan::AllocType) crtstuff.c
+    #7 0x57e29362fd23 in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28bd23) (BuildId: fec8d58ecb896053)
+    #8 0x57e293636f91 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_allocate(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:378:20
+    #9 0x57e293636f91 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_create_storage(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:395:33
+    #10 0x57e29363bc8b in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_Vector_base(unsigned long, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:332:9
+    #11 0x57e29363bc8b in std::vector<unsigned char, std::allocator<unsigned char>>::vector(unsigned long, unsigned char const&, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:566:9
+    #12 0x57e293637a32 in ISOBMFF::BinaryStream::Read(unsigned long) /opt/ISOBMFF/ISOBMFF/source/BinaryStream.cpp:73:32
+    #13 0x57e29363d94f in ISOBMFF::ContainerBox::ReadData(ISOBMFF::Parser&, ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/ContainerBox.cpp:126:60
+    #14 0x57e29364b265 in ISOBMFF::Parser::Parse(ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:217:32
+    #15 0x57e29364a625 in ISOBMFF::Parser::Parse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:169:15
+    #16 0x57e293632879 in parse_isobmff(unsigned char const*, unsigned long) /fuzzer/harness.cpp:41:16
+    #17 0x57e293632879 in LLVMFuzzerTestOneInput /fuzzer/harness.cpp:83:5
+    #18 0x57e293556f72 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) crtstuff.c
+    #19 0x57e293556685 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) crtstuff.c
+    #20 0x57e293558412 in fuzzer::Fuzzer::ReadAndExecuteSeedCorpora(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #21 0x57e2935588f3 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #22 0x57e293546bc2 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #23 0x57e293570112 in main (/fuzzer/fuzz_isobmff+0x1cc112) (BuildId: fec8d58ecb896053)
+    #24 0x7019fa600d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #25 0x7019fa600e3f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e3f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+    #26 0x57e29353b774 in _start (/fuzzer/fuzz_isobmff+0x197774) (BuildId: fec8d58ecb896053)
+
+MS: 0 ; base unit: 0000000000000000000000000000000000000000
+0xff,0xff,0xff,0xff,0x66,0x74,0x79,0x70,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x0,
+\377\377\377\377ftypmp41\000\000\000\000
+artifact_prefix='/results/crashes/20260313_121822_b1146f57_'; Test unit written to /results/crashes/20260313_121822_b1146f57_oom-8dad897ad522e6c910a8595a3e25cc456cde5906
+Base64: /////2Z0eXBtcDQxAAAAAA==
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 4
+stat::average_exec_per_sec:     0
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              547

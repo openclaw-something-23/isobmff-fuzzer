@@ -1,43 +1,73 @@
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LLVM_VERSION=15
 
 RUN apt-get update && apt-get install -y \
     clang-15 llvm-15 lld-15 \
-    afl++ \
+    libstdc++-12-dev \
     git make cmake \
     python3 python3-pip \
     curl xxd \
-    libstdc++-12-dev \
-    && ln -sf /usr/bin/clang-15      /usr/bin/clang \
-    && ln -sf /usr/bin/clang++-15    /usr/bin/clang++ \
+    && ln -sf /usr/bin/clang-15         /usr/bin/clang \
+    && ln -sf /usr/bin/clang++-15       /usr/bin/clang++ \
     && ln -sf /usr/bin/llvm-profdata-15 /usr/bin/llvm-profdata \
     && ln -sf /usr/bin/llvm-cov-15      /usr/bin/llvm-cov \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone ISOBMFF
-RUN git clone --depth=1 https://github.com/DigiDNA/ISOBMFF.git /opt/ISOBMFF
+# Verify C++ headers are available
+RUN clang++-15 -std=c++17 -x c++ - -c -o /dev/null <<'EOF'
+#include <memory>
+#include <string>
+#include <vector>
+#include <stdexcept>
+int main(){}
+EOF
 
-# Build ISOBMFF with coverage + sanitizers
+# Clone ISOBMFF with submodules
+RUN git clone --recurse-submodules https://github.com/DigiDNA/ISOBMFF.git /opt/ISOBMFF
+
+# Build ISOBMFF as static lib — compile each .cpp individually
 WORKDIR /opt/ISOBMFF
-RUN CXX=clang++ CC=clang \
-    CXXFLAGS="-std=c++17 -fsanitize=address,undefined -fprofile-instr-generate -fcoverage-mapping -fno-omit-frame-pointer -g" \
-    make -j4 2>&1 | tail -20 || echo "[warn] partial build"
+RUN mkdir -p Build/Products/obj && \
+    for f in $(find ISOBMFF/source -name "*.cpp" | sort); do \
+        out="Build/Products/obj/$(basename ${f}).o"; \
+        clang++-15 \
+            -std=c++17 \
+            -fsanitize=undefined \
+            -fprofile-instr-generate \
+            -fcoverage-mapping \
+            -fno-omit-frame-pointer \
+            -g -O1 \
+            -I/opt/ISOBMFF/ISOBMFF/include \
+            -c "$f" -o "$out" && echo "  compiled $(basename $f)"; \
+    done && \
+    ar rcs Build/Products/libISOBMFF.a Build/Products/obj/*.o && \
+    echo "[+] libISOBMFF.a: $(ls -lh Build/Products/libISOBMFF.a | awk '{print $5}')"
 
-# Copy fuzzer harness + scripts
+# Copy fuzzer sources + scripts
 COPY fuzzer/harness.cpp  /fuzzer/harness.cpp
 COPY fuzzer/Makefile     /fuzzer/Makefile
 COPY scripts/            /scripts/
 RUN chmod +x /scripts/*.sh
 
 # Build libFuzzer harness
-WORKDIR /fuzzer
-RUN make libfuzzer 2>&1 | tail -10
+RUN clang++-15 \
+      -std=c++17 \
+      -fsanitize=fuzzer,undefined \
+      -fprofile-instr-generate \
+      -fcoverage-mapping \
+      -fno-omit-frame-pointer \
+      -g -O1 \
+      -I/opt/ISOBMFF/ISOBMFF/include \
+      /fuzzer/harness.cpp \
+      /opt/ISOBMFF/Build/Products/libISOBMFF.a \
+      -lstdc++ -lm \
+      -fuse-ld=lld \
+      -o /fuzzer/fuzz_isobmff && \
+    echo "[+] Harness: $(ls -lh /fuzzer/fuzz_isobmff | awk '{print $5}')"
 
-# Create seed corpus
+# Seed corpus
 RUN python3 /scripts/make_corpus.py
 
 WORKDIR /fuzzer
-
 CMD ["/scripts/run_fuzzer.sh"]

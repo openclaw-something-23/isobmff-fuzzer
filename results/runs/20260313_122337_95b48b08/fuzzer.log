@@ -1,0 +1,43 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2027585066
+INFO: Loaded 1 modules   (246 inline 8-bit counters): 246 [0x5db3968497b0, 0x5db3968498a6), 
+INFO: Loaded 1 PC tables (246 PCs): 246 [0x5db3968498a8,0x5db39684a808), 
+INFO:       51 files found in /fuzzer/corpus
+INFO: seed corpus: files: 51 min: 1b max: 124b total: 2238b rss: 33Mb
+#52	INITED cov: 109 ft: 257 corp: 20/870b exec/s: 0 rss: 39Mb
+#53	NEW    cov: 109 ft: 258 corp: 21/871b lim: 94 exec/s: 0 rss: 39Mb L: 1/94 MS: 1 ChangeBit-
+==18== ERROR: libFuzzer: out-of-memory (used: 716Mb; limit: 512Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+Live Heap Allocations: 4319283770 bytes in 511 chunks; quarantined: 3012469 bytes in 17343 chunks; 6487 other chunks; total chunks: 24341; showing top 95% (at most 8 unique contexts)
+4294967288 byte(s) (99%) in 1 allocation(s)
+    #0 0x5db3966a298d in operator new(unsigned long) (/fuzzer/fuzz_isobmff+0x28c98d) (BuildId: b31634ad386fbaf8)
+    #1 0x5db3966aa9c1 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_allocate(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:378:20
+    #2 0x5db3966aa9c1 in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_M_create_storage(unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:395:33
+    #3 0x5db3966af66b in std::_Vector_base<unsigned char, std::allocator<unsigned char>>::_Vector_base(unsigned long, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:332:9
+    #4 0x5db3966af66b in std::vector<unsigned char, std::allocator<unsigned char>>::vector(unsigned long, unsigned char const&, std::allocator<unsigned char> const&) /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/bits/stl_vector.h:566:9
+    #5 0x5db3966ab412 in ISOBMFF::BinaryStream::Read(unsigned long) /opt/ISOBMFF/ISOBMFF/source/BinaryStream.cpp:73:32
+    #6 0x5db3966b0fcf in ISOBMFF::ContainerBox::ReadData(ISOBMFF::Parser&, ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/ContainerBox.cpp:126:60
+    #7 0x5db3966be8e5 in ISOBMFF::Parser::Parse(ISOBMFF::BinaryStream&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:217:32
+    #8 0x5db3966bdca5 in ISOBMFF::Parser::Parse(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /opt/ISOBMFF/ISOBMFF/source/Parser.cpp:169:15
+    #9 0x5db3966a562e in parse_isobmff(unsigned char const*, unsigned long) /fuzzer/harness.cpp:75:16
+    #10 0x5db3966a562e in LLVMFuzzerTestOneInput /fuzzer/harness.cpp:117:5
+    #11 0x5db3965c9c42 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) crtstuff.c
+    #12 0x5db3965c9355 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) crtstuff.c
+    #13 0x5db3965cabd7 in fuzzer::Fuzzer::MutateAndTestOne() crtstuff.c
+    #14 0x5db3965cb7d5 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) crtstuff.c
+    #15 0x5db3965b9892 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) crtstuff.c
+    #16 0x5db3965e2de2 in main (/fuzzer/fuzz_isobmff+0x1ccde2) (BuildId: b31634ad386fbaf8)
+    #17 0x78f0aea61d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f) (BuildId: 095c7ba148aeca81668091f718047078d57efddb)
+
+MS: 2 ChangeASCIIInt-EraseBytes-; base unit: fcac0c08de27efde8b28c79f2417fa359c6275e4
+0x0,0x0,0x0,0x14,0x66,0x74,0x79,0x70,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x0,0x6d,0x70,0x34,0x31,0x0,0x0,0x0,0x0,0x0,0x8,0x6d,0x64,0x61,0x74,0x0,0x0,0x7c,0x0,0x66,0x74,0x79,0x70,0x69,0x73,0x6f,0x6d,0x0,0x0,0x0,0x0,0x69,0x73,0x6f,0x6d,
+\000\000\000\024ftypmp41\000\000\000\000mp41\000\000\000\000\000\010mdat\000\000|\000ftypisom\000\000\000\000isom
+artifact_prefix='/results/crashes/20260313_122337_95b48b08_'; Test unit written to /results/crashes/20260313_122337_95b48b08_oom-aa93928c51415daef909b197e09c6f53b1408d3a
+Base64: AAAAFGZ0eXBtcDQxAAAAAG1wNDEAAAAAAAhtZGF0AAB8AGZ0eXBpc29tAAAAAGlzb20=
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 150
+stat::average_exec_per_sec:     150
+stat::new_units_added:          1
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              718
