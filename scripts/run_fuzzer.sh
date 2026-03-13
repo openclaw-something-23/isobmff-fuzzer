@@ -46,7 +46,7 @@ UBSAN_OPTIONS="halt_on_error=0:abort_on_error=0:print_stacktrace=1" \
     -artifact_prefix="${RESULTS}/crashes/${RUN_ID}_" \
     -max_total_time="${MAX_TOTAL_TIME}" \
     -max_len="${MAX_LEN}" \
-    -rss_limit_mb=512 \
+    -rss_limit_mb=1024 \
     -detect_leaks=0 \
     -print_final_stats=1 \
     2>&1 | tee "${RUN_DIR}/fuzzer.log" || true
