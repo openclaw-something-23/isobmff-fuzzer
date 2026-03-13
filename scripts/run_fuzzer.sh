@@ -57,7 +57,10 @@ DURATION=$(( END_TS - START_TS ))
 # ── Extract stats ──────────────────────────────────────────────────────────────
 COV=$(grep -oP 'cov: \K[0-9]+' "${RUN_DIR}/fuzzer.log" 2>/dev/null | tail -1 || echo "0")
 SPEED=$(grep -oP 'exec/s: \K[0-9]+' "${RUN_DIR}/fuzzer.log" 2>/dev/null | tail -1 || echo "0")
-CRASHES=$(find "${RESULTS}/crashes" -maxdepth 1 -name "${RUN_ID}_*" ! -name "*.json" 2>/dev/null | wc -l)
+# Count only real crashes (not OOM — those are documented separately)
+CRASHES=$(find "${RESULTS}/crashes" -maxdepth 1 -name "${RUN_ID}_*" ! -name "*.json" ! -name "*oom*" 2>/dev/null | wc -l)
+# Remove OOM artifacts (we don't track them)
+find "${RESULTS}/crashes" -maxdepth 1 -name "${RUN_ID}_*oom*" -delete 2>/dev/null || true
 NEW_UNITS=$(grep -oP 'new_units_added: \K[0-9]+' "${RUN_DIR}/fuzzer.log" 2>/dev/null | tail -1 || echo "0")
 EXECS=$(grep -oP 'number_of_executed_units: \K[0-9]+' "${RUN_DIR}/fuzzer.log" 2>/dev/null | tail -1 || echo "0")
 
