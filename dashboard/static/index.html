@@ -133,6 +133,7 @@
     <span id="last-update">–</span>
     <button class="btn" onclick="rescan()">🔄 Rescan</button>
     <button class="btn btn-primary" onclick="refresh()">↻ Refresh</button>
+    <a href="/auth/logout" class="btn" style="text-decoration:none">🚪 Logout</a>
   </div>
 </header>
 
@@ -145,6 +146,7 @@
     <div class="stat-card"><div class="stat-label">Best Score</div><div class="stat-value purple" id="s-score">–</div></div>
     <div class="stat-card"><div class="stat-label">Avg Speed</div><div class="stat-value orange" id="s-speed">–</div><div class="stat-sub">exec/sec</div></div>
     <div class="stat-card"><div class="stat-label">Running Now</div><div class="stat-value" id="s-running">–</div></div>
+    <div class="stat-card"><div class="stat-label">Fuzzer</div><div class="stat-value" id="s-fuzzer" style="font-size:1rem;padding-top:8px">–</div></div>
   </div>
 
   <!-- Charts -->
@@ -342,9 +344,13 @@ async function loadStats() {
   document.getElementById('s-cov').textContent     = (s.best_coverage_pct || 0).toFixed(1) + '%';
   document.getElementById('s-score').textContent   = (s.best_score || 0).toLocaleString();
   document.getElementById('s-speed').textContent   = Math.round(s.avg_execs_per_sec || 0).toLocaleString();
-  document.getElementById('s-running').innerHTML   = s.running > 0
+  document.getElementById('s-running').innerHTML = s.running > 0
     ? `<span class="green">${s.running}</span>`
-    : `<span class="stat-value" style="color:var(--muted)">0</span>`;
+    : `<span style="color:var(--muted)">0</span>`;
+  const fc = s.fuzzer_container || 'unknown';
+  const fcColor = fc === 'running' ? 'var(--green)' : fc === 'exited' ? 'var(--muted)' : 'var(--orange)';
+  const fcIcon  = fc === 'running' ? '🟢' : fc === 'restarting' ? '🔄' : '🔴';
+  document.getElementById('s-fuzzer').innerHTML = `<span style="color:${fcColor}">${fcIcon} ${fc}</span>`;
   if (s.crash_types) updateCrashChart(s.crash_types);
   document.getElementById('last-update').textContent = '↺ ' + new Date().toLocaleTimeString();
 }
