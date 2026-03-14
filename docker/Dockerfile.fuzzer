@@ -57,6 +57,22 @@ RUN AFL_USE_ASAN=1 AFL_USE_UBSAN=1 \
       -o /fuzzer/fuzz_isobmff_afl && \
     echo "[+] AFL++ harness: $(ls -lh /fuzzer/fuzz_isobmff_afl | awk '{print $5}')"
 
+# ── Build CMPLOG harness (instruments comparisons for AFL++ -c flag) ──────────
+# CMPLOG logs all comparison operands so AFL++ can satisfy conditions
+# that random mutations would rarely crack (e.g., magic bytes, version checks).
+RUN AFL_USE_ASAN=1 AFL_USE_UBSAN=1 AFL_LLVM_CMPLOG=1 \
+    afl-clang-fast++ \
+      -std=c++17 \
+      -fno-omit-frame-pointer \
+      -g -O1 \
+      -I/opt/ISOBMFF/ISOBMFF/include \
+      /fuzzer/harness.cpp \
+      /opt/ISOBMFF/Build/Products/libISOBMFF.a \
+      -lstdc++ -lm \
+      -o /fuzzer/fuzz_isobmff_cmplog 2>/dev/null && \
+    echo "[+] CMPLOG harness: $(ls -lh /fuzzer/fuzz_isobmff_cmplog | awk '{print $5}')" || \
+    echo "[~] CMPLOG build skipped"
+
 # ── Build standalone replay binary (for crash analysis) ───────────────────────
 RUN AFL_USE_ASAN=1 AFL_USE_UBSAN=1 \
     afl-clang-fast++ \

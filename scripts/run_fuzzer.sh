@@ -10,13 +10,23 @@ set -euo pipefail
 RESULTS="/results"
 SEEDS="${SEEDS:-/fuzzer/corpus}"
 HARNESS="/fuzzer/fuzz_isobmff_afl"
+CMPLOG_BIN="${CMPLOG_BIN:-/fuzzer/fuzz_isobmff_cmplog}"   # CMPLOG binary (optional)
+MUTATOR_SO="${MUTATOR_SO:-/fuzzer/isobmff_mutator.so}"    # custom mutator (optional)
 DICT="/fuzzer/isobmff.dict"
 DASHBOARD_API="${DASHBOARD_API:-http://localhost:56789}"
-MAX_TOTAL_TIME="${MAX_TOTAL_TIME:-300}"
-TIMEOUT_MS="${AFL_TIMEOUT:-5000}"        # per-input timeout (ms)
+MAX_TOTAL_TIME="${MAX_TOTAL_TIME:-3600}"
+TIMEOUT_MS="${AFL_TIMEOUT:-5000}"
 AFL_CORES="${AFL_CORES:-1}"
 
-mkdir -p "${RESULTS}/runs" "${RESULTS}/crashes" "${RESULTS}/coverage"
+# Power schedule rotation (cycles through strategies across runs)
+SCHEDULES=("fast" "explore" "exploit" "mmopt" "rare")
+SCHEDULE_IDX_FILE="/results/.schedule_idx"
+SCHED_IDX=$(cat "${SCHEDULE_IDX_FILE}" 2>/dev/null || echo "0")
+SCHED_IDX=$(( SCHED_IDX % ${#SCHEDULES[@]} ))
+POWER_SCHEDULE="${SCHEDULES[$SCHED_IDX]}"
+echo $(( (SCHED_IDX + 1) % ${#SCHEDULES[@]} )) > "${SCHEDULE_IDX_FILE}"
+
+mkdir -p "${RESULTS}/runs" "${RESULTS}/crashes" "${RESULTS}/coverage" "${RESULTS}/quarantine"
 
 [ ! -x "${HARNESS}" ] && echo "[!] Harness not found: ${HARNESS}" && exit 1
 
@@ -26,7 +36,7 @@ AFL_OUT="${RESULTS}/afl_out/${RUN_ID}"
 MAIN_DIR="${AFL_OUT}/main"
 mkdir -p "${RUN_DIR}" "${AFL_OUT}"
 
-echo "[+] Run ${RUN_ID} starting (max=${MAX_TOTAL_TIME}s cores=${AFL_CORES} timeout=${TIMEOUT_MS}ms)"
+echo "[+] Run ${RUN_ID} starting (max=${MAX_TOTAL_TIME}s cores=${AFL_CORES} timeout=${TIMEOUT_MS}ms schedule=${POWER_SCHEDULE})"
 START_TS=$(date +%s)
 
 curl -sf -X POST "${DASHBOARD_API}/api/runs" \
@@ -68,16 +78,44 @@ if [ ! -d "${SEEDS_OK}" ] || [ "$(ls "${SEEDS_OK}" 2>/dev/null | wc -l)" -lt 3 ]
 fi
 ACTIVE_SEEDS="${SEEDS_OK}"
 
-# ── Improvement 2: Dictionary ─────────────────────────────────────────────────
-DICT_FLAG=""
-[ -f "${DICT}" ] && DICT_FLAG="-x ${DICT}" && echo "[*] Using dictionary: ${DICT}"
+# ── Improvement 4: Slow seed quarantine ───────────────────────────────────────
+# Move seeds that took >timeout in previous runs to quarantine.
+# AFL++ writes timeouts to <afl_out>/main/hangs/ — we pick those up.
+QUARANTINE="${RESULTS}/quarantine"
+QUARANTINE_COUNT=0
+for prev_afl_out in "${RESULTS}/afl_out"/*/main/hangs; do
+    [ -d "$prev_afl_out" ] || continue
+    for f in "${prev_afl_out}"/id:*; do
+        [ -f "$f" ] || continue
+        fname=$(basename "$f")
+        # Find the original seed this hang was derived from
+        orig_name=$(echo "$fname" | grep -oP "orig:\K[^,]+" || true)
+        if [ -n "$orig_name" ] && [ -f "${SEEDS_OK}/${orig_name}" ]; then
+            mv "${SEEDS_OK}/${orig_name}" "${QUARANTINE}/${orig_name}" 2>/dev/null && \
+            QUARANTINE_COUNT=$((QUARANTINE_COUNT+1)) || true
+        fi
+    done
+done
+[ "$QUARANTINE_COUNT" -gt 0 ] && echo "[*] Quarantined ${QUARANTINE_COUNT} slow seed(s)"
 
-# ── Improvement 4: Multi-instance (main + secondaries in parallel) ─────────────
-# Main runs with -M, secondaries with -S. Both start together;
-# secondaries are killed when main exits.
+# ── Dictionary ────────────────────────────────────────────────────────────────
+DICT_FLAG=""
+[ -f "${DICT}" ] && DICT_FLAG="-x ${DICT}" && echo "[*] Dict: ${DICT}"
+
+# ── Custom mutator ────────────────────────────────────────────────────────────
+MUTATOR_FLAG=""
+[ -f "${MUTATOR_SO}" ] && MUTATOR_FLAG="AFL_CUSTOM_MUTATOR_LIBRARY=${MUTATOR_SO}" && \
+    echo "[*] Custom mutator: ${MUTATOR_SO}"
+
+# ── CMPLOG flag ───────────────────────────────────────────────────────────────
+CMPLOG_FLAG=""
+[ -x "${CMPLOG_BIN}" ] && CMPLOG_FLAG="-c ${CMPLOG_BIN}" && \
+    echo "[*] CMPLOG: ${CMPLOG_BIN}"
+
+# ── Multi-instance launch ─────────────────────────────────────────────────────
 SECONDARY_PIDS=()
 
-# Start main in BACKGROUND
+eval "${MUTATOR_FLAG}" \
 AFL_IGNORE_SEED_PROBLEMS=1 \
 ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
 UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
@@ -87,7 +125,9 @@ afl-fuzz \
   -o "${AFL_OUT}" \
   -V "${MAX_TOTAL_TIME}" \
   -t "${TIMEOUT_MS}" \
+  -p "${POWER_SCHEDULE}" \
   ${DICT_FLAG} \
+  ${CMPLOG_FLAG} \
   -- "${HARNESS}" \
   2>&1 | tee "${RUN_DIR}/fuzzer.log" &
 MAIN_PID=$!
@@ -226,26 +266,64 @@ cat > "${RUN_DIR}/meta.json" <<METAEOF
   "corpus_found": ${NEW_UNITS},
   "score": ${SCORE},
   "afl_out": "${AFL_OUT}",
+  "power_schedule": "${POWER_SCHEDULE}",
   "exit_code": 0
 }
 METAEOF
 
 [ "${COPIED_CRASHES}" -gt 0 ] && /scripts/analyze_crashes.sh "${RUN_ID}" || true
 
-# ── Corpus merge (afl-cmin) ────────────────────────────────────────────────────
-if [ "${CRASHES}" -eq 0 ] && [ -d "${MAIN_DIR}/queue" ]; then
-    CMIN_OUT="/tmp/cmin_${RUN_ID}"
-    mkdir -p "${CMIN_OUT}"
-    afl-cmin -i "${MAIN_DIR}/queue" -o "${CMIN_OUT}" -- "${HARNESS}" 2>/dev/null || true
-    MERGED=0
-    for f in "${CMIN_OUT}"/*; do
-        [ -f "$f" ] || continue
-        fname=$(basename "$f")
-        [ -f "${SEEDS_OK}/${fname}" ] && continue
-        cp "$f" "${SEEDS_OK}/${fname}" && MERGED=$((MERGED+1))
+# ── Improvement 4: afl-tmin — auto-minimize crashes ──────────────────────────
+# Finds the smallest input that still triggers the same crash.
+# Makes triage much easier: typical 32KB crash → 8-64 bytes.
+MINIMIZED_CRASHES=0
+if [ "${COPIED_CRASHES}" -gt 0 ]; then
+    for crash_file in "${RESULTS}/crashes/${RUN_ID}_id:"*; do
+        [ -f "$crash_file" ] || continue
+        min_out="${crash_file%.mp4}_min.mp4"
+        [ -f "$min_out" ] && continue  # already minimized
+        echo "[*] afl-tmin: minimizing $(basename $crash_file)..."
+        ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
+        timeout 60s afl-tmin \
+            -i "$crash_file" \
+            -o "$min_out" \
+            -t "${TIMEOUT_MS}" \
+            -- "${HARNESS}" >/dev/null 2>&1 && \
+        echo "[+] Minimized: $(wc -c < "$crash_file")B → $(wc -c < "$min_out")B" && \
+        MINIMIZED_CRASHES=$((MINIMIZED_CRASHES+1)) || true
     done
-    rm -rf "${CMIN_OUT}"
-    [ "$MERGED" -gt 0 ] && echo "[+] Merged ${MERGED} minimized corpus entries into seeds_ok"
+    [ "$MINIMIZED_CRASHES" -gt 0 ] && echo "[+] Minimized ${MINIMIZED_CRASHES} crash(es)"
+fi
+
+# ── Improvement 5: Continuous corpus growth (every 3rd run only) ──────────────
+# afl-cmin is expensive (~90s) — run it every 3 runs, not every run.
+RUN_COUNT=$(ls "${RESULTS}/runs/" 2>/dev/null | wc -l)
+if [ $(( RUN_COUNT % 3 )) -eq 0 ] && [ -d "${MAIN_DIR}/queue" ]; then
+    NEW_QUEUE_COUNT=$(ls "${MAIN_DIR}/queue" | grep -v '^\.' | wc -l)
+    if [ "$NEW_QUEUE_COUNT" -gt 10 ]; then
+        echo "[*] Corpus growth pass (run #${RUN_COUNT}): merging ${NEW_QUEUE_COUNT} queue entries..."
+        CMIN_OUT="/tmp/cmin_${RUN_ID}"
+        mkdir -p "${CMIN_OUT}"
+        AFL_IGNORE_SEED_PROBLEMS=1 \
+        ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
+        timeout 120s afl-cmin \
+            -i "${MAIN_DIR}/queue" \
+            -o "${CMIN_OUT}" \
+            -t "${TIMEOUT_MS}" \
+            -- "${HARNESS}" >/dev/null 2>&1 || true
+        MERGED=0
+        for f in "${CMIN_OUT}"/*; do
+            [ -f "$f" ] || continue
+            sz=$(wc -c < "$f")
+            [ "$sz" -lt 8 ] && continue
+            [ "$sz" -gt 65536 ] && continue
+            fname="queue_${RUN_ID}_$(basename $f)"
+            [ -f "${SEEDS_OK}/${fname}" ] && continue
+            cp "$f" "${SEEDS_OK}/${fname}" && MERGED=$((MERGED+1))
+        done
+        rm -rf "${CMIN_OUT}"
+        [ "$MERGED" -gt 0 ] && echo "[+] Seeds_ok grew by ${MERGED} (now $(ls ${SEEDS_OK} | wc -l) total)"
+    fi
 fi
 
 # ── Report to dashboard ────────────────────────────────────────────────────────
