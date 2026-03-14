@@ -207,7 +207,7 @@ COV_LINES=${COV_LINES:-0}
 # ── Score ──────────────────────────────────────────────────────────────────────
 SCORE=$(python3 -c "print(${COV}*5 + ${CRASHES}*200 + ${NEW_UNITS}*20 + ${SPEED}//10)" 2>/dev/null || echo "0")
 
-echo "[+] ${RUN_ID}: duration=${DURATION}s edges=${COV} crashes=${CRASHED} new=${NEW_UNITS} speed=${SPEED}/s score=${SCORE}"
+echo "[+] ${RUN_ID}: duration=${DURATION}s edges=${COV} crashes=${CRASHES} new=${NEW_UNITS} speed=${SPEED}/s score=${SCORE}"
 
 # ── Save metadata ──────────────────────────────────────────────────────────────
 cat > "${RUN_DIR}/meta.json" <<METAEOF
