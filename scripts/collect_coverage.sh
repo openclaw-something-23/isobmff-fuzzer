@@ -86,27 +86,73 @@ EOF
 
 echo "[+] Coverage summary: bitmap=${BITMAP_CVG}% edges=${EDGES}"
 
-# ── Optional: generate LLVM HTML coverage if libFuzzer build exists ───────────
-# This runs the AFL++ corpus through a separately-built libFuzzer harness.
+# ── Improvement 5: Source-level coverage with llvm-cov ────────────────────────
+# Runs AFL++ corpus through the libFuzzer-instrumented build to get real
+# line/branch/function coverage %. Produces HTML + JSON summary with exact %.
 LIBFUZZER_BIN="/fuzzer/fuzz_isobmff"
-if [ -x "${LIBFUZZER_BIN}" ] && [ -d "${AFL_OUT}/main/queue" ]; then
-    echo "[*] Generating LLVM HTML coverage from AFL++ queue..."
+ISOBMFF_SRC="/opt/ISOBMFF/ISOBMFF/source"
+QUEUE_DIR="${AFL_OUT}/main/queue"
+
+if [ -x "${LIBFUZZER_BIN}" ] && [ -d "${QUEUE_DIR}" ]; then
+    QUEUE_COUNT=$(ls "${QUEUE_DIR}" | grep -c "^id:" 2>/dev/null || echo 0)
+    echo "[*] Running ${QUEUE_COUNT} corpus files through libFuzzer for LLVM coverage..."
+
     PROFRAW="/tmp/fuzz_${RUN_ID}_%p.profraw"
+    PROFDATA="/tmp/fuzz_${RUN_ID}.profdata"
     export LLVM_PROFILE_FILE="${PROFRAW}"
+
     ASAN_OPTIONS="halt_on_error=0:abort_on_error=0:detect_leaks=0:allocator_may_return_null=1" \
-    "${LIBFUZZER_BIN}" "${AFL_OUT}/main/queue/" -runs=0 >/dev/null 2>&1 || true
+    "${LIBFUZZER_BIN}" "${QUEUE_DIR}" -runs=0 >/dev/null 2>&1 || true
 
     PROFRAW_FILES=(/tmp/fuzz_${RUN_ID}_*.profraw)
-    if [ -e "${PROFRAW_FILES[0]}" ]; then
-        PROFDATA="/tmp/fuzz_${RUN_ID}_merged.profdata"
+    if [ -e "${PROFRAW_FILES[0]:-}" ]; then
         llvm-profdata merge -sparse "${PROFRAW_FILES[@]}" -o "${PROFDATA}" 2>/dev/null || true
-        ISOBMFF_SRC="/opt/ISOBMFF/ISOBMFF/source"
-        llvm-cov show "${LIBFUZZER_BIN}" \
-          -instr-profile="${PROFDATA}" \
-          -format=html \
-          "${ISOBMFF_SRC}"/*.cpp \
-          > "${COV_DIR}/${RUN_ID}_coverage.html" 2>/dev/null || true
+
+        if [ -f "${PROFDATA}" ]; then
+            # ── HTML report (line-by-line source view) ────────────────────────
+            llvm-cov show "${LIBFUZZER_BIN}" \
+              -instr-profile="${PROFDATA}" \
+              -format=html \
+              -show-line-counts-or-regions \
+              "${ISOBMFF_SRC}"/*.cpp \
+              > "${COV_DIR}/${RUN_ID}_coverage.html" 2>/dev/null || true
+
+            # ── Text summary: extract line/branch/function % ──────────────────
+            SUMMARY=$(llvm-cov report "${LIBFUZZER_BIN}" \
+              -instr-profile="${PROFDATA}" \
+              "${ISOBMFF_SRC}"/*.cpp 2>/dev/null | tail -2 || true)
+
+            # Parse TOTAL line: "TOTAL  N  N  LL%  N  N  BB%  N  N  FF%"
+            LINE_PCT=$(echo "${SUMMARY}" | awk '/TOTAL/{print $4}' | tr -d '%')
+            BRANCH_PCT=$(echo "${SUMMARY}" | awk '/TOTAL/{print $7}' | tr -d '%')
+            FUNC_PCT=$(echo "${SUMMARY}" | awk '/TOTAL/{print $10}' | tr -d '%')
+            LINE_PCT=${LINE_PCT:-0}; BRANCH_PCT=${BRANCH_PCT:-0}; FUNC_PCT=${FUNC_PCT:-0}
+
+            echo "[+] Source coverage: lines=${LINE_PCT}% branches=${BRANCH_PCT}% functions=${FUNC_PCT}%"
+
+            # Write source-level metrics (overwrite AFL++ bitmap metrics)
+            echo "${LINE_PCT}"   > "${COV_DIR}/${RUN_ID}_lines.txt"
+            echo "${FUNC_PCT}"   > "${COV_DIR}/${RUN_ID}_funcs.txt"
+
+            # Enrich summary JSON with source-level data
+            python3 - <<PYEOF 2>/dev/null || true
+import json, os
+sf = "${COV_DIR}/${RUN_ID}_summary.json"
+d = json.load(open(sf)) if os.path.isfile(sf) else {}
+d.update({
+    "lines_pct":    float("${LINE_PCT}" or 0),
+    "branch_pct":   float("${BRANCH_PCT}" or 0),
+    "funcs_pct":    float("${FUNC_PCT}" or 0),
+    "html_report":  "${RUN_ID}_coverage.html",
+})
+json.dump(d, open(sf, "w"), indent=2)
+PYEOF
+        fi
         rm -f "${PROFRAW_FILES[@]}" "${PROFDATA}" 2>/dev/null || true
         echo "[+] LLVM HTML coverage: ${COV_DIR}/${RUN_ID}_coverage.html"
+    else
+        echo "[~] No profraw files generated (libFuzzer build may be incomplete)"
     fi
+else
+    echo "[~] libFuzzer build not found at ${LIBFUZZER_BIN}, skipping source coverage"
 fi

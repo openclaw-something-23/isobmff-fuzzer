@@ -22,7 +22,8 @@ services:
       timeout: 5s
       retries: 3
 
-  # ─── Fuzzer (can be scaled: docker-compose up --scale fuzzer=4) ─
+  # ─── Fuzzer (AFL++) ─────────────────────────────────────────────
+  # Scale: docker-compose up --scale fuzzer=4
   fuzzer:
     build:
       context: .
@@ -30,33 +31,45 @@ services:
     container_name: isobmff-fuzzer
     volumes:
       - ./results:/results
-      - ./fuzzer/corpus:/fuzzer/corpus          # shared corpus
-      - ./fuzzer/crashes:/results/crashes       # crash artifacts
+      - ./fuzzer/corpus:/fuzzer/corpus      # shared seed corpus (rw)
     environment:
       - DASHBOARD_API=http://dashboard:56789
-      - MAX_TOTAL_TIME=${FUZZ_TIME:-300}        # seconds per run
-      - MAX_LEN=${MAX_LEN:-65536}
-      - JOBS=${FUZZ_JOBS:-2}
+      - MAX_TOTAL_TIME=${FUZZ_TIME:-300}    # -V seconds per afl-fuzz run
+      - MAX_LEN=${MAX_LEN:-65536}           # -g max input length
+      - AFL_CORES=${AFL_CORES:-1}
+      - AFL_NO_AFFINITY=1
+      - AFL_SKIP_CPUFREQ=1
+      - AFL_AUTORESUME=1
+      # ASAN options: no halt on OOM, allow null returns
+      - ASAN_OPTIONS=halt_on_error=0:abort_on_error=0:detect_leaks=0:allocator_may_return_null=1
+      - UBSAN_OPTIONS=halt_on_error=0:print_stacktrace=1
     depends_on:
       dashboard:
         condition: service_healthy
-    # Run fuzzer in a loop
     entrypoint: |
       /bin/bash -c "
+        echo core > /proc/sys/kernel/core_pattern 2>/dev/null || true
+        echo 0    > /proc/sys/kernel/randomize_va_space 2>/dev/null || true
         while true; do
           /scripts/run_fuzzer.sh
-          echo '[*] Run complete. Sleeping 5s before next run...'
+          echo '[*] Run complete. Sleeping 5s...'
           sleep 5
         done
       "
     restart: unless-stopped
-    # Required for ASAN
+    # AFL++ requires: seccomp off + SYS_PTRACE for ASAN stack traces
     security_opt:
       - seccomp:unconfined
     cap_add:
       - SYS_PTRACE
+      - SYS_ADMIN          # needed for /proc/sys writes (core_pattern, ASLR)
+    # Large /dev/shm for AFL++ persistent mode shared memory
+    shm_size: "256mb"
     ulimits:
       core: 0
+      nofile:
+        soft: 65536
+        hard: 65536
 
 volumes:
   results:

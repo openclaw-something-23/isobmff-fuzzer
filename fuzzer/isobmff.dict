@@ -1,0 +1,178 @@
+# AFL++ dictionary for ISO Base Media File Format (ISOBMFF / MP4 / MOV)
+# Box type 4-byte FourCC tokens — guides AFL++ mutations toward valid box names
+# and common field values, dramatically increasing coverage of box-specific parsers.
+
+# ── Top-level / container boxes ──────────────────────────────────────────────
+"ftyp"  # File Type Box       — always first, declares brand
+"moov"  # Movie Box           — primary container
+"mdat"  # Media Data Box      — raw encoded media
+"free"  # Free Space Box
+"skip"  # Skip Box
+"wide"  # Wide Box (QuickTime)
+"pnot"  # Preview (QuickTime)
+"jP  "  # JPEG 2000 Signature
+
+# ── Movie header & metadata ───────────────────────────────────────────────────
+"mvhd"  # Movie Header Box
+"udta"  # User Data Box
+"meta"  # Metadata Box
+"ilst"  # iTunes Metadata List
+"mean"  # iTunes Meaning
+"name"  # iTunes Name
+"data"  # iTunes Data
+
+# ── Track boxes ───────────────────────────────────────────────────────────────
+"trak"  # Track Box
+"tkhd"  # Track Header Box
+"edts"  # Edit Box
+"elst"  # Edit List Box
+"tref"  # Track Reference Box
+"load"  # Track Load Settings (QuickTime)
+
+# ── Media boxes ───────────────────────────────────────────────────────────────
+"mdia"  # Media Box
+"mdhd"  # Media Header Box
+"hdlr"  # Handler Reference Box
+"minf"  # Media Information Box
+"vmhd"  # Video Media Header
+"smhd"  # Sound Media Header
+"hmhd"  # Hint Media Header
+"nmhd"  # Null Media Header
+"dinf"  # Data Information Box
+"dref"  # Data Reference Box
+"url "  # Data Entry URL Box
+"urn "  # Data Entry URN Box
+
+# ── Sample table boxes ────────────────────────────────────────────────────────
+"stbl"  # Sample Table Box
+"stsd"  # Sample Description Box
+"stts"  # Time-to-Sample Box
+"ctts"  # Composition Time-to-Sample Box
+"stsc"  # Sample-to-Chunk Box
+"stsz"  # Sample Size Box
+"stz2"  # Compact Sample Size Box
+"stco"  # Chunk Offset Box
+"co64"  # 64-bit Chunk Offset Box
+"stss"  # Sync Sample Box
+"stsh"  # Shadow Sync Box
+"padb"  # Padding Bits Box
+"stdp"  # Sample Dependency Flags Box
+"sdtp"  # Sample Dependency Type Box
+"sbgp"  # Sample-to-Group Box
+"sgpd"  # Sample Group Description Box
+"subs"  # Sub-Sample Information Box
+
+# ── Video/audio codec descriptor boxes ───────────────────────────────────────
+"avc1"  # AVC (H.264) Video
+"avc2"
+"avc3"
+"avc4"
+"hvc1"  # HEVC (H.265) Video
+"hev1"
+"vp08"  # VP8
+"vp09"  # VP9
+"av01"  # AV1
+"mp4v"  # MPEG-4 Video
+"mp4a"  # MPEG-4 Audio
+"aac " 
+"ac-3"  # AC-3 Audio
+"ec-3"  # Enhanced AC-3
+"Opus"  # Opus Audio
+"flac"  # FLAC
+"twos"  # 16-bit PCM
+"sowt"  # Little-endian PCM
+"alaw"  # A-law PCM
+"ulaw"  # µ-law PCM
+"raw "  # Uncompressed PCM
+"jpeg"  # JPEG still
+"png "  # PNG still
+
+# ── Codec config/extension boxes ─────────────────────────────────────────────
+"avcC"  # AVC Configuration
+"hvcC"  # HEVC Configuration
+"vpcC"  # VP Codec Configuration
+"av1C"  # AV1 Codec Configuration
+"esds"  # Elementary Stream Descriptor
+"btrt"  # Bit Rate Box
+"colr"  # Colour Information Box
+"pasp"  # Pixel Aspect Ratio Box
+"clap"  # Clean Aperture Box
+"fiel"  # Field/Frame Info (QuickTime)
+"wave"  # QuickTime Wave atom
+
+# ── Fragmented MP4 boxes ──────────────────────────────────────────────────────
+"mvex"  # Movie Extends Box
+"mehd"  # Movie Extends Header
+"trex"  # Track Extends Box
+"moof"  # Movie Fragment Box
+"mfhd"  # Movie Fragment Header
+"traf"  # Track Fragment Box
+"tfhd"  # Track Fragment Header
+"tfdt"  # Track Fragment Base Media Decode Time
+"trun"  # Track Fragment Run
+"mfra"  # Movie Fragment Random Access
+"mfro"  # Movie Fragment Random Access Offset
+"tfra"  # Track Fragment Random Access
+
+# ── Protection / encryption (CENC) ───────────────────────────────────────────
+"pssh"  # Protection System Specific Header
+"sinf"  # Protection Scheme Info
+"frma"  # Original Format Box
+"schm"  # Scheme Type Box
+"schi"  # Scheme Information Box
+"tenc"  # Track Encryption Box
+"senc"  # Sample Encryption Box
+"saiz"  # Sample Auxiliary Information Sizes
+"saio"  # Sample Auxiliary Information Offsets
+
+# ── HEIF/AVIF image boxes ─────────────────────────────────────────────────────
+"pict"  # Picture Track (QuickTime)
+"idat"  # Item Data Box
+"iref"  # Item Reference Box
+"iprp"  # Item Properties Box
+"ipco"  # Item Property Container
+"ipma"  # Item Property Association
+"iinf"  # Item Info Box
+"infe"  # Item Info Entry
+"iloc"  # Item Location Box
+"ispe"  # Image Spatial Extents
+"pixi"  # Pixel Information
+"imir"  # Image Mirror
+"irot"  # Image Rotation
+"clef"  # QuickTime Clean Aperture Dimensions
+"prof"  # QuickTime Profile Atom
+"enof"  # QuickTime Encoded Pixels Dimensions
+
+# ── Brand identifiers (ftyp.major_brand / compatible_brands) ─────────────────
+"isom"  # ISO Base Media
+"iso2"
+"iso6"
+"mp41"  # MP4 v1
+"mp42"  # MP4 v2
+"M4V "  # iTunes Video
+"M4A "  # iTunes Audio
+"M4P "  # iTunes Protected
+"M4B "  # iTunes Audiobook
+"qt  "  # QuickTime
+"avc1"
+"dash"  # MPEG-DASH
+"cmfc"  # Common Media Application Format
+"avif"  # AV1 Image File Format
+"heic"  # High Efficiency Image
+"heif"
+"mif1"
+"msf1"  # HEVC image sequence
+
+# ── Numeric field patterns ────────────────────────────────────────────────────
+"\x00\x00\x00\x00"   # Zero size (extends to EOF — triggers patch_boxes)
+"\x00\x00\x00\x08"   # Minimal valid box size (header only)
+"\x00\x00\x00\x01"   # Extended 64-bit size indicator
+"\x00\x00\x00\x10"   # 16-byte box
+"\x00\x00\x00\x1c"   # 28-byte box
+"\x00\x00\x00\x20"   # 32-byte box
+"\xff\xff\xff\xff"   # Max 32-bit size
+"\x00\x00\x00\x00\x00\x00\x00\x10"  # 64-bit size = 16
+
+# ── Version/flags combos ──────────────────────────────────────────────────────
+"\x00\x00\x00\x00"   # version=0 flags=0
+"\x01\x00\x00\x00"   # version=1 flags=0

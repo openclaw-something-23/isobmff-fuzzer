@@ -2,7 +2,9 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# ── System deps + AFL++ ────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y \
+    afl++ \
     clang-15 llvm-15 lld-15 \
     libstdc++-12-dev \
     git make cmake \
@@ -14,28 +16,20 @@ RUN apt-get update && apt-get install -y \
     && ln -sf /usr/bin/llvm-cov-15      /usr/bin/llvm-cov \
     && rm -rf /var/lib/apt/lists/*
 
-# Verify C++ headers are available
-RUN clang++-15 -std=c++17 -x c++ - -c -o /dev/null <<'EOF'
-#include <memory>
-#include <string>
-#include <vector>
-#include <stdexcept>
-int main(){}
-EOF
+# Verify AFL++ is installed
+RUN afl-fuzz --version 2>&1 | head -1
 
-# Clone ISOBMFF with submodules
+# ── Clone ISOBMFF ──────────────────────────────────────────────────────────────
 RUN git clone --recurse-submodules https://github.com/DigiDNA/ISOBMFF.git /opt/ISOBMFF
 
-# Build ISOBMFF as static lib — compile each .cpp individually
+# ── Build ISOBMFF with AFL++ instrumentation (ASAN + UBSAN) ───────────────────
 WORKDIR /opt/ISOBMFF
 RUN mkdir -p Build/Products/obj && \
     for f in $(find ISOBMFF/source -name "*.cpp" | sort); do \
-        out="Build/Products/obj/$(basename ${f}).o"; \
-        clang++-15 \
+        out="Build/Products/obj/$(basename ${f%.cpp}).o"; \
+        AFL_USE_ASAN=1 AFL_USE_UBSAN=1 \
+        afl-clang-fast++ \
             -std=c++17 \
-            -fsanitize=undefined \
-            -fprofile-instr-generate \
-            -fcoverage-mapping \
             -fno-omit-frame-pointer \
             -g -O1 \
             -I/opt/ISOBMFF/ISOBMFF/include \
@@ -44,30 +38,63 @@ RUN mkdir -p Build/Products/obj && \
     ar rcs Build/Products/libISOBMFF.a Build/Products/obj/*.o && \
     echo "[+] libISOBMFF.a: $(ls -lh Build/Products/libISOBMFF.a | awk '{print $5}')"
 
-# Copy fuzzer sources + scripts
+# ── Copy fuzzer sources + scripts ─────────────────────────────────────────────
 COPY fuzzer/harness.cpp  /fuzzer/harness.cpp
 COPY fuzzer/Makefile     /fuzzer/Makefile
 COPY scripts/            /scripts/
 RUN chmod +x /scripts/*.sh
 
-# Build libFuzzer harness
-RUN clang++-15 \
+# ── Build AFL++ harness (primary) ─────────────────────────────────────────────
+RUN AFL_USE_ASAN=1 AFL_USE_UBSAN=1 \
+    afl-clang-fast++ \
       -std=c++17 \
-      -fsanitize=fuzzer,undefined \
-      -fprofile-instr-generate \
-      -fcoverage-mapping \
       -fno-omit-frame-pointer \
       -g -O1 \
       -I/opt/ISOBMFF/ISOBMFF/include \
       /fuzzer/harness.cpp \
       /opt/ISOBMFF/Build/Products/libISOBMFF.a \
       -lstdc++ -lm \
-      -fuse-ld=lld \
-      -o /fuzzer/fuzz_isobmff && \
-    echo "[+] Harness: $(ls -lh /fuzzer/fuzz_isobmff | awk '{print $5}')"
+      -o /fuzzer/fuzz_isobmff_afl && \
+    echo "[+] AFL++ harness: $(ls -lh /fuzzer/fuzz_isobmff_afl | awk '{print $5}')"
 
-# Seed corpus
+# ── Build standalone replay binary (for crash analysis) ───────────────────────
+RUN AFL_USE_ASAN=1 AFL_USE_UBSAN=1 \
+    afl-clang-fast++ \
+      -std=c++17 \
+      -fno-omit-frame-pointer \
+      -g -O1 \
+      -DSTANDALONE_MODE \
+      -I/opt/ISOBMFF/ISOBMFF/include \
+      /fuzzer/harness.cpp \
+      /opt/ISOBMFF/Build/Products/libISOBMFF.a \
+      -lstdc++ -lm \
+      -o /fuzzer/fuzz_isobmff_replay && \
+    echo "[+] Replay binary: $(ls -lh /fuzzer/fuzz_isobmff_replay | awk '{print $5}')"
+
+# ── Build libFuzzer harness (for LLVM HTML coverage only) ─────────────────────
+RUN clang++-15 \
+      -std=c++17 \
+      -fsanitize=address,fuzzer,undefined \
+      -fprofile-instr-generate \
+      -fcoverage-mapping \
+      -fno-omit-frame-pointer \
+      -g -O1 \
+      -I/opt/ISOBMFF/ISOBMFF/include \
+      /fuzzer/harness.cpp \
+      -lstdc++ -lm \
+      -fuse-ld=lld \
+      -o /fuzzer/fuzz_isobmff 2>/dev/null || \
+    echo "[~] libFuzzer build skipped (optional, for HTML coverage only)"
+
+# ── Seed corpus ───────────────────────────────────────────────────────────────
 RUN python3 /scripts/make_corpus.py
+
+# ── AFL++ container tweaks ────────────────────────────────────────────────────
+# Disable core dump filename changes (AFL++ warns but works without this in Docker)
+# AFL_NO_AFFINITY=1 avoids CPU affinity errors in containers
+ENV AFL_NO_AFFINITY=1
+ENV AFL_SKIP_CPUFREQ=1
+ENV AFL_AUTORESUME=1
 
 WORKDIR /fuzzer
 CMD ["/scripts/run_fuzzer.sh"]

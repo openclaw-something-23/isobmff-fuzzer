@@ -121,6 +121,7 @@ async def get_stats(request: Request):
         unique_crashes = conn.execute("SELECT COUNT(*) FROM crashes WHERE is_unique=1").fetchone()[0]
         best_score     = conn.execute("SELECT MAX(score) FROM runs").fetchone()[0] or 0
         best_cov       = conn.execute("SELECT MAX(cov_lines_pct) FROM runs").fetchone()[0] or 0.0
+        best_edges     = conn.execute("SELECT MAX(cov_edges) FROM runs WHERE status='done'").fetchone()[0] or 0
         avg_speed      = conn.execute("SELECT AVG(execs_per_sec) FROM runs WHERE status='done' AND execs_per_sec > 0").fetchone()[0] or 0.0
         crash_types    = {r[0]: r[1] for r in conn.execute("SELECT crash_type, COUNT(*) FROM crashes GROUP BY crash_type")}
         # Cumulative corpus entries found by AFL++
@@ -197,6 +198,7 @@ async def get_stats(request: Request):
         "unique_crashes": unique_crashes,
         "best_score": best_score,
         "best_coverage_pct": round(best_cov, 2),
+        "best_edges": int(best_edges),
         "avg_execs_per_sec": round(avg_speed, 1),
         "crash_types": crash_types,
         "fuzzer_container": fuzzer_status,
@@ -289,7 +291,71 @@ async def download_crash(request: Request, crash_file: str):
     return FileResponse(str(path), filename=safe,
                         media_type="application/octet-stream")
 
+# ── Improvement 4: Live fuzzer_stats endpoint ─────────────────────────────────
+# Reads AFL++ fuzzer_stats directly from disk — updates every ~1s during a run.
+# Returns {} if no active run found.
+@app.get("/api/live")
+async def live_stats(request: Request):
+    check_auth(request)
+    afl_out = os.path.join(RESULTS_DIR, "afl_out")
+    if not os.path.isdir(afl_out):
+        return {}
+    # Find the most recently modified fuzzer_stats file
+    best_mtime = 0
+    best_stats = {}
+    for run_dir in os.listdir(afl_out):
+        sf = os.path.join(afl_out, run_dir, "main", "fuzzer_stats")
+        if not os.path.isfile(sf):
+            continue
+        mtime = os.path.getmtime(sf)
+        if mtime > best_mtime:
+            best_mtime = mtime
+            try:
+                data = {}
+                with open(sf) as f:
+                    for line in f:
+                        if ":" in line:
+                            k, v = line.split(":", 1)
+                            data[k.strip()] = v.strip()
+                best_stats = {
+                    "run_id":         run_dir,
+                    "edges_found":    int(data.get("edges_found", 0)),
+                    "bitmap_cvg":     data.get("bitmap_cvg", "0.0%"),
+                    "execs_done":     int(data.get("execs_done", 0)),
+                    "execs_per_sec":  data.get("execs_per_sec", "0"),
+                    "saved_crashes":  int(data.get("saved_crashes", 0)),
+                    "corpus_count":   int(data.get("corpus_count", 0)),
+                    "corpus_found":   int(data.get("corpus_found", 0)),
+                    "cycles_done":    int(data.get("cycles_done", 0)),
+                    "stability":      data.get("stability", "0%"),
+                    "run_time":       int(data.get("run_time", 0)),
+                    "last_update":    int(best_mtime),
+                    "stale_sec":      int(time.time() - best_mtime),
+                }
+            except Exception:
+                pass
+    return best_stats
+
 # ── Coverage ──────────────────────────────────────────────────────────────────
+@app.get("/api/live")
+async def live_stats(request: Request):
+    """Live AFL++ stats from the currently running fuzzer instance."""
+    check_auth(request)
+    live_file = os.path.join(RESULTS_DIR, "live_stats.json")
+    if not os.path.isfile(live_file):
+        return {"running": False, "updated_at": 0}
+    try:
+        with open(live_file) as f:
+            data = json.load(f)
+        # If last update > 60s ago, consider stale
+        age = int(time.time()) - data.get("updated_at", 0)
+        data["stale"] = age > 60
+        data["running"] = True
+        return data
+    except Exception:
+        return {"running": False, "updated_at": 0}
+
+
 @app.get("/api/coverage/timeline")
 async def coverage_timeline(request: Request, limit: int = 200):
     check_auth(request)
@@ -298,12 +364,11 @@ async def coverage_timeline(request: Request, limit: int = 200):
         rows = conn.execute("""
             SELECT run_id, started_at, cov_lines_pct, cov_funcs_pct, cov_edges, score, execs_per_sec
             FROM runs
-            WHERE status='done' AND cov_lines_pct > 0
+            WHERE status='done' AND cov_edges > 0
             ORDER BY started_at ASC
             LIMIT ?
         """, (limit,)).fetchall()
         if not rows:
-            # No runs with coverage yet — return most recent runs for the chart
             rows = conn.execute("""
                 SELECT run_id, started_at, cov_lines_pct, cov_funcs_pct, cov_edges, score, execs_per_sec
                 FROM runs WHERE status='done'
