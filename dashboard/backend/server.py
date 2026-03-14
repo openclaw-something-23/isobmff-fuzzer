@@ -104,6 +104,7 @@ class RunUpdate(BaseModel):
     cov_edges: Optional[int] = None; cov_lines_pct: Optional[float] = None
     cov_funcs_pct: Optional[float] = None; execs_per_sec: Optional[int] = None
     score: Optional[int] = None; exit_code: Optional[int] = None
+    corpus_found: Optional[int] = None
 
 class CrashCreate(BaseModel):
     run_id: str; crash_file: str; crash_type: str = "unknown"
@@ -120,26 +121,93 @@ async def get_stats(request: Request):
         unique_crashes = conn.execute("SELECT COUNT(*) FROM crashes WHERE is_unique=1").fetchone()[0]
         best_score     = conn.execute("SELECT MAX(score) FROM runs").fetchone()[0] or 0
         best_cov       = conn.execute("SELECT MAX(cov_lines_pct) FROM runs").fetchone()[0] or 0.0
-        avg_speed      = conn.execute("SELECT AVG(execs_per_sec) FROM runs WHERE status='done'").fetchone()[0] or 0.0
+        avg_speed      = conn.execute("SELECT AVG(execs_per_sec) FROM runs WHERE status='done' AND execs_per_sec > 0").fetchone()[0] or 0.0
         crash_types    = {r[0]: r[1] for r in conn.execute("SELECT crash_type, COUNT(*) FROM crashes GROUP BY crash_type")}
+        # Cumulative corpus entries found by AFL++
+        total_corpus_found = conn.execute("SELECT SUM(corpus_found) FROM runs WHERE status='done'").fetchone()[0] or 0
 
-    # Actual fuzzer status from Docker (not stale DB rows)
+    # ── Corpus count ──────────────────────────────────────────────────────────
+    # 1. Seed corpus: count files ≤ 100 to detect the 7-seed init corpus
+    #    If the dir has >1000 files it's the stale libFuzzer corpus — ignore it
+    seed_dirs = ["/fuzzer/corpus", os.path.join(RESULTS_DIR, "../fuzzer/corpus")]
+    seed_count = 0
+    for d in seed_dirs:
+        if os.path.isdir(d):
+            files = [f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f))]
+            if len(files) <= 1000:   # only count if it's a real seed dir (not 157k libFuzzer corpus)
+                seed_count = len(files)
+            break
+
+    # 2. AFL++ queue count (from most recent completed run)
+    afl_queue_count = 0
+    afl_out_dir = os.path.join(RESULTS_DIR, "afl_out")
+    if os.path.isdir(afl_out_dir):
+        for run_dir in sorted(os.listdir(afl_out_dir), reverse=True)[:5]:
+            queue_dir = os.path.join(afl_out_dir, run_dir, "main", "queue")
+            if os.path.isdir(queue_dir):
+                afl_queue_count = sum(1 for f in os.listdir(queue_dir) if not f.startswith('.'))
+                break
+
+    # 3. Latest fuzzer_stats corpus_count (live, from active run)
+    live_corpus = 0
+    if os.path.isdir(afl_out_dir):
+        for run_dir in sorted(os.listdir(afl_out_dir), reverse=True)[:3]:
+            stats_file = os.path.join(afl_out_dir, run_dir, "main", "fuzzer_stats")
+            if os.path.isfile(stats_file):
+                try:
+                    with open(stats_file) as f:
+                        for line in f:
+                            if line.startswith("corpus_count"):
+                                live_corpus = int(line.split(":")[1].strip())
+                                break
+                    if live_corpus:
+                        break
+                except Exception:
+                    pass
+
+    # Best corpus count: live > queue > seeds
+    corpus_total = live_corpus or afl_queue_count or seed_count
+
+    # ── Running fuzzer instances (all matching containers) ────────────────────
+    fuzzer_status = "unknown"
+    running_now = 0
     try:
-        fuzzer_status = subprocess.check_output(
-            ["docker","inspect","--format","{{.State.Status}}","isobmff-fuzzer"],
+        # List ALL running containers named isobmff-fuzzer* (supports scale > 1)
+        ps_out = subprocess.check_output(
+            ["docker", "ps",
+             "--filter", "name=isobmff-fuzzer",
+             "--filter", "status=running",
+             "--format", "{{.Names}}"],
             stderr=subprocess.DEVNULL).decode().strip()
+        running_containers = [l for l in ps_out.splitlines() if l.strip()]
+        running_now = len(running_containers)
+
+        # Also get the primary container status for display
+        inspect_out = subprocess.check_output(
+            ["docker", "inspect", "--format", "{{.State.Status}}", "isobmff-fuzzer"],
+            stderr=subprocess.DEVNULL).decode().strip()
+        fuzzer_status = inspect_out
     except Exception:
         fuzzer_status = "unknown"
+        running_now = 0
 
-    # "running now" = 1 if container is actively running, else 0
-    running_now = 1 if fuzzer_status == "running" else 0
-
-    return {"total_runs": total_runs, "total_crashes": total_crashes,
-            "unique_crashes": unique_crashes, "best_score": best_score,
-            "best_coverage_pct": round(best_cov, 2), "avg_execs_per_sec": round(avg_speed, 1),
-            "crash_types": crash_types, "fuzzer_container": fuzzer_status,
-            "running": running_now,
-            "updated_at": int(time.time())}
+    return {
+        "total_runs": total_runs,
+        "total_crashes": total_crashes,
+        "unique_crashes": unique_crashes,
+        "best_score": best_score,
+        "best_coverage_pct": round(best_cov, 2),
+        "avg_execs_per_sec": round(avg_speed, 1),
+        "crash_types": crash_types,
+        "fuzzer_container": fuzzer_status,
+        "running": running_now,
+        "corpus_seeds": seed_count,
+        "corpus_queue": afl_queue_count,
+        "corpus_live": live_corpus,
+        "corpus_total": corpus_total,
+        "corpus_found_cumulative": int(total_corpus_found or 0),
+        "updated_at": int(time.time()),
+    }
 
 # ── Runs ──────────────────────────────────────────────────────────────────────
 @app.get("/api/runs")
@@ -223,11 +291,25 @@ async def download_crash(request: Request, crash_file: str):
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
 @app.get("/api/coverage/timeline")
-async def coverage_timeline(request: Request, limit: int = 100):
+async def coverage_timeline(request: Request, limit: int = 200):
     check_auth(request)
     with get_db() as conn:
-        rows = conn.execute("""SELECT run_id, started_at, cov_lines_pct, cov_funcs_pct, cov_edges, score
-                               FROM runs WHERE status='done' ORDER BY started_at ASC LIMIT ?""", (limit,)).fetchall()
+        # Prefer runs with real coverage (bitmap_cvg > 0); fall back to all recent
+        rows = conn.execute("""
+            SELECT run_id, started_at, cov_lines_pct, cov_funcs_pct, cov_edges, score, execs_per_sec
+            FROM runs
+            WHERE status='done' AND cov_lines_pct > 0
+            ORDER BY started_at ASC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        if not rows:
+            # No runs with coverage yet — return most recent runs for the chart
+            rows = conn.execute("""
+                SELECT run_id, started_at, cov_lines_pct, cov_funcs_pct, cov_edges, score, execs_per_sec
+                FROM runs WHERE status='done'
+                ORDER BY started_at DESC LIMIT ?
+            """, (min(limit, 50),)).fetchall()
+            rows = list(reversed(rows))
     return [dict(r) for r in rows]
 
 @app.get("/api/coverage/{run_id}/html")

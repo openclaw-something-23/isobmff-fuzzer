@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS runs (
     cov_lines_pct   REAL    DEFAULT 0.0,
     cov_funcs_pct   REAL    DEFAULT 0.0,
     execs_per_sec   INTEGER DEFAULT 0,
+    corpus_found    INTEGER DEFAULT 0,
     score           INTEGER DEFAULT 0,
     exit_code       INTEGER DEFAULT 0,
     notes           TEXT    DEFAULT ''
@@ -93,23 +94,43 @@ def _read_coverage_summary(cov_dir: str, run_id: str) -> dict:
 
 def scan_and_import_results(results_dir: str = "/results"):
     """Import any run metadata files not yet in DB, and patch coverage for existing rows."""
+    # Always ensure schema exists before querying
+    init_db()
+
     runs_dir = os.path.join(results_dir, "runs")
     cov_dir  = os.path.join(results_dir, "coverage")
     if not os.path.isdir(runs_dir):
         return
 
-    with get_db() as conn:
-        existing = {row[0]: row[1] for row in conn.execute(
-            "SELECT run_id, cov_lines_pct FROM runs"
-        )}
+    try:
+        with get_db() as conn:
+            existing = {row[0]: row[1] for row in conn.execute(
+                "SELECT run_id, cov_lines_pct FROM runs"
+            )}
+    except Exception as e:
+        print(f"[!] scan_and_import_results: DB query failed ({e}), reinitializing")
+        init_db()
+        existing = {}
 
-    for run_id in os.listdir(runs_dir):
+    # Sort descending, limit scan to 300 most recent dirs
+    all_run_ids = sorted(os.listdir(runs_dir), reverse=True)[:300]
+
+    for run_id in all_run_ids:
         meta_file = os.path.join(runs_dir, run_id, "meta.json")
         if not os.path.isfile(meta_file):
             continue
 
         # If already imported and has real coverage, skip
         if run_id in existing and existing[run_id] > 0:
+            continue
+
+        # Only import AFL++ runs — meta.json must have engine="afl++"
+        try:
+            with open(meta_file) as _mf:
+                _quick = json.load(_mf)
+            if _quick.get("engine") != "afl++":
+                continue
+        except Exception:
             continue
 
         try:
@@ -136,10 +157,10 @@ def scan_and_import_results(results_dir: str = "/results"):
                         INSERT OR REPLACE INTO runs
                         (run_id, status, started_at, ended_at, duration_sec,
                          crashes, cov_edges, cov_lines_pct, cov_funcs_pct,
-                         execs_per_sec, score, exit_code)
+                         execs_per_sec, score, exit_code, corpus_found)
                         VALUES (:run_id, :status, :started_at, :ended_at, :duration_sec,
                                 :crashes, :cov_edges, :cov_lines_pct, :cov_funcs_pct,
-                                :execs_per_sec, :score, :exit_code)
+                                :execs_per_sec, :score, :exit_code, :corpus_found)
                     """, {
                         "run_id": meta.get("run_id", run_id),
                         "status": meta.get("status", "done"),
@@ -151,6 +172,7 @@ def scan_and_import_results(results_dir: str = "/results"):
                         "cov_lines_pct": lines_pct,
                         "cov_funcs_pct": funcs_pct,
                         "execs_per_sec": meta.get("execs_per_sec", 0),
+                        "corpus_found":  int(meta.get("corpus_found", 0) or 0),
                         "score": meta.get("score", 0),
                         "exit_code": meta.get("exit_code", 0),
                     })

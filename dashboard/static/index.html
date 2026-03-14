@@ -199,10 +199,24 @@
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-label">Runs</div><div class="stat-value blue" id="s-runs">–</div></div>
     <div class="stat-card"><div class="stat-label">Crashes</div><div class="stat-value red" id="s-crashes">–</div></div>
-    <div class="stat-card"><div class="stat-label">Coverage</div><div class="stat-value green" id="s-cov">–</div><div class="stat-sub">line %</div></div>
+    <div class="stat-card"><div class="stat-label">Coverage</div><div class="stat-value green" id="s-cov">–</div><div class="stat-sub">bitmap %</div></div>
     <div class="stat-card"><div class="stat-label">Best Score</div><div class="stat-value purple" id="s-score">–</div></div>
     <div class="stat-card"><div class="stat-label">Avg Speed</div><div class="stat-value orange" id="s-speed">–</div><div class="stat-sub">exec/s</div></div>
-    <div class="stat-card"><div class="stat-label">Running</div><div class="stat-value" id="s-running">–</div></div>
+    <div class="stat-card">
+      <div class="stat-label">Running</div>
+      <div class="stat-value" id="s-running">–</div>
+      <div class="stat-sub" id="s-running-sub">instances</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Corpus</div>
+      <div class="stat-value cyan" id="s-corpus">–</div>
+      <div class="stat-sub" id="s-corpus-sub">samples</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">New Samples Found</div>
+      <div class="stat-value" id="s-corpus-found" style="color:var(--cyan)">–</div>
+      <div class="stat-sub">cumulative</div>
+    </div>
     <div class="stat-card" style="grid-column: span 2"><div class="stat-label">Fuzzer Container</div><div class="stat-value" id="s-fuzzer" style="font-size:0.95rem;padding-top:6px">–</div></div>
   </div>
 
@@ -261,6 +275,7 @@
               <th>Score</th>
               <th>Cov%</th>
               <th class="hide-sm">Edges</th>
+              <th class="hide-sm">Corpus+</th>
               <th class="hide-sm">Crashes</th>
               <th class="hide-sm">Exec/s</th>
               <th class="hide-sm">Dur</th>
@@ -415,18 +430,42 @@ function updateCrashChart(types) {
 async function loadStats() {
   const s = await fetch(`${API}/api/stats`).then(r=>r.json()).catch(()=>null);
   if (!s) return;
-  document.getElementById('s-runs').textContent    = s.total_runs;
+  document.getElementById('s-runs').textContent    = (s.total_runs||0).toLocaleString();
   document.getElementById('s-crashes').textContent = s.unique_crashes;
   document.getElementById('s-cov').textContent     = (s.best_coverage_pct||0).toFixed(1)+'%';
   document.getElementById('s-score').textContent   = (s.best_score||0).toLocaleString();
   document.getElementById('s-speed').textContent   = Math.round(s.avg_execs_per_sec||0).toLocaleString();
-  document.getElementById('s-running').innerHTML = (s.running||0)>0
-    ? `<span class="green">${s.running}</span>`
+
+  // Running instances
+  const runCount = s.running || 0;
+  document.getElementById('s-running').innerHTML = runCount > 0
+    ? `<span class="green">${runCount}</span>`
     : `<span style="color:var(--muted)">0</span>`;
+  document.getElementById('s-running-sub').textContent =
+    runCount === 1 ? 'instance' : runCount > 1 ? 'instances' : 'stopped';
+
+  // Corpus samples
+  const corpusTotal = s.corpus_total || s.corpus_seeds || 0;
+  const corpusSeeds = s.corpus_seeds || 0;
+  const corpusQueue = s.corpus_queue || 0;
+  const corpusLive  = s.corpus_live  || 0;
+  document.getElementById('s-corpus').textContent = corpusTotal.toLocaleString();
+  // Show breakdown as sub-label
+  let corpusSub = 'samples';
+  if (corpusLive > 0)        corpusSub = `live: ${corpusLive.toLocaleString()}`;
+  else if (corpusQueue > 0)  corpusSub = `queue: ${corpusQueue.toLocaleString()}`;
+  else if (corpusSeeds > 0)  corpusSub = `seeds: ${corpusSeeds}`;
+  document.getElementById('s-corpus-sub').textContent = corpusSub;
+
+  // Cumulative new samples found by AFL++
+  document.getElementById('s-corpus-found').textContent =
+    (s.corpus_found_cumulative || 0).toLocaleString();
+
+  // Fuzzer container
   const fc = s.fuzzer_container || 'unknown';
   const fcColor = fc==='running'?'var(--green)':fc==='exited'?'var(--muted)':'var(--orange)';
   const fcIcon  = fc==='running'?'🟢':fc==='restarting'?'🔄':'🔴';
-  document.getElementById('s-fuzzer').innerHTML = `<span style="color:${fcColor}">${fcIcon} ${fc}</span>`;
+  document.getElementById('s-fuzzer').innerHTML = `<span style="color:${fcColor}">${fcIcon} isobmff-fuzzer [${fc}]</span>`;
   if (s.crash_types) updateCrashChart(s.crash_types);
   document.getElementById('last-update').textContent = '↺ '+new Date().toLocaleTimeString();
 }
@@ -459,6 +498,7 @@ async function loadRuns() {
       <td>${(r.score||0).toLocaleString()}</td>
       <td><span class="green">${(r.cov_lines_pct||0).toFixed(1)}%</span></td>
       <td class="hide-sm">${(r.cov_edges||0).toLocaleString()}</td>
+      <td class="hide-sm" style="color:var(--cyan)">${r.corpus_found>0?'+'+r.corpus_found:'-'}</td>
       <td class="hide-sm">${r.crashes>0?`<span class="red">${r.crashes}</span>`:'0'}</td>
       <td class="hide-sm">${(r.execs_per_sec||0).toLocaleString()}</td>
       <td class="hide-sm">${fmt_dur(r.duration_sec)}</td>
