@@ -1,0 +1,37 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3458770592
+INFO: Loaded 1 modules   (252 inline 8-bit counters): 252 [0x57c0a2f69678, 0x57c0a2f69774), 
+INFO: Loaded 1 PC tables (252 PCs): 252 [0x57c0a2f69778,0x57c0a2f6a738), 
+INFO:        4 files found in /tmp/corpus_20260313_151652_bf102adf
+INFO: seed corpus: files: 4 min: 48b max: 333b total: 853b rss: 28Mb
+#5	INITED cov: 118 ft: 253 corp: 4/853b exec/s: 0 rss: 29Mb
+#6	NEW    cov: 119 ft: 255 corp: 5/1109b lim: 333 exec/s: 0 rss: 29Mb L: 256/333 MS: 1 CMP- DE: "sldh"-
+#7	NEW    cov: 119 ft: 273 corp: 6/1238b lim: 333 exec/s: 0 rss: 29Mb L: 129/333 MS: 1 InsertRepeatedBytes-
+#8	NEW    cov: 119 ft: 278 corp: 7/1286b lim: 333 exec/s: 0 rss: 29Mb L: 48/333 MS: 1 ChangeBinInt-
+#10	NEW    cov: 119 ft: 280 corp: 8/1335b lim: 333 exec/s: 0 rss: 29Mb L: 49/333 MS: 2 ChangeBinInt-InsertByte-
+#11	NEW    cov: 119 ft: 290 corp: 9/1384b lim: 333 exec/s: 0 rss: 29Mb L: 49/333 MS: 1 InsertByte-
+#13	NEW    cov: 119 ft: 291 corp: 10/1605b lim: 333 exec/s: 0 rss: 29Mb L: 221/333 MS: 2 ChangeBinInt-InsertByte-
+#14	NEW    cov: 119 ft: 300 corp: 11/1676b lim: 333 exec/s: 0 rss: 29Mb L: 71/333 MS: 1 CopyPart-
+#18	NEW    cov: 119 ft: 302 corp: 12/1767b lim: 333 exec/s: 0 rss: 29Mb L: 91/333 MS: 4 ChangeByte-ShuffleBytes-ChangeBinInt-CrossOver-
+#29	NEW    cov: 119 ft: 305 corp: 13/1800b lim: 333 exec/s: 0 rss: 29Mb L: 33/333 MS: 1 EraseBytes-
+#32	NEW    cov: 119 ft: 306 corp: 14/1922b lim: 333 exec/s: 0 rss: 29Mb L: 122/333 MS: 3 ChangeBinInt-ChangeBit-InsertRepeatedBytes-
+#33	NEW    cov: 119 ft: 319 corp: 15/2182b lim: 333 exec/s: 0 rss: 29Mb L: 260/333 MS: 1 PersAutoDict- DE: "sldh"-
+#38	NEW    cov: 119 ft: 320 corp: 16/2232b lim: 333 exec/s: 0 rss: 29Mb L: 50/333 MS: 5 ChangeBit-ChangeBit-ShuffleBytes-ChangeASCIIInt-CrossOver-
+#41	NEW    cov: 119 ft: 325 corp: 17/2323b lim: 333 exec/s: 0 rss: 29Mb L: 91/333 MS: 3 PersAutoDict-ChangeBinInt-CMP- DE: "sldh"-"\025\000\000\000\000\000\000\000"-
+#53	NEW    cov: 119 ft: 326 corp: 18/2405b lim: 333 exec/s: 0 rss: 29Mb L: 82/333 MS: 2 ChangeByte-InsertRepeatedBytes-
+#56	REDUCE cov: 119 ft: 326 corp: 18/2395b lim: 333 exec/s: 0 rss: 29Mb L: 38/333 MS: 3 ChangeBinInt-CMP-EraseBytes- DE: "hvc1"-
+#64	NEW    cov: 119 ft: 327 corp: 19/2710b lim: 333 exec/s: 0 rss: 29Mb L: 315/333 MS: 3 ChangeBit-ChangeByte-CopyPart-
+#65	NEW    cov: 119 ft: 335 corp: 20/2736b lim: 333 exec/s: 0 rss: 29Mb L: 26/333 MS: 1 EraseBytes-
+#66	NEW    cov: 120 ft: 339 corp: 21/2886b lim: 333 exec/s: 0 rss: 29Mb L: 150/333 MS: 1 CrossOver-
+#68	NEW    cov: 120 ft: 344 corp: 22/3107b lim: 333 exec/s: 0 rss: 29Mb L: 221/333 MS: 2 ChangeBit-InsertByte-
+==167698== ERROR: libFuzzer: out-of-memory (used: 1549Mb; limit: 1024Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+MS: 1 InsertByte-; base unit: 8e220b9b8cb039c28995eb4ee1bd716002928bbc
+artifact_prefix='/results/crashes/20260313_151652_bf102adf_'; Test unit written to /results/crashes/20260313_151652_bf102adf_oom-b70f9540c7749aadf16d352c2f53918dc3ac0266
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 69
+stat::average_exec_per_sec:     69
+stat::new_units_added:          19
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              1550

@@ -1,7 +1,14 @@
 # Build artifacts
 fuzzer/fuzz_isobmff
 fuzzer/fuzz_isobmff_afl
+fuzzer/fuzz_isobmff_replay
 *.o *.a
+
+# AFL++ sync dirs (large, gitignored)
+results/afl_out/
+
+# Run logs (too many small files — use meta.json only)
+results/runs/*/fuzzer.log
 
 # Large result files (crashes, coverage html) — keep only metadata
 results/crashes/*.mp4

@@ -1,0 +1,44 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2704039410
+INFO: Loaded 1 modules   (252 inline 8-bit counters): 252 [0x646594646678, 0x646594646774), 
+INFO: Loaded 1 PC tables (252 PCs): 252 [0x646594646778,0x646594647738), 
+INFO:        4 files found in /tmp/corpus_20260313_153232_9068e823
+INFO: seed corpus: files: 4 min: 48b max: 333b total: 853b rss: 28Mb
+#5	INITED cov: 118 ft: 252 corp: 4/853b exec/s: 0 rss: 29Mb
+#6	NEW    cov: 118 ft: 261 corp: 5/1143b lim: 333 exec/s: 0 rss: 29Mb L: 290/333 MS: 1 InsertRepeatedBytes-
+#7	NEW    cov: 118 ft: 266 corp: 6/1466b lim: 333 exec/s: 0 rss: 29Mb L: 323/333 MS: 1 InsertRepeatedBytes-
+#9	NEW    cov: 118 ft: 272 corp: 7/1799b lim: 333 exec/s: 0 rss: 29Mb L: 333/333 MS: 2 ChangeByte-ChangeBinInt-
+#10	NEW    cov: 118 ft: 288 corp: 8/1878b lim: 333 exec/s: 0 rss: 29Mb L: 79/333 MS: 1 CopyPart-
+#17	NEW    cov: 118 ft: 289 corp: 9/2061b lim: 333 exec/s: 0 rss: 29Mb L: 183/333 MS: 2 CMP-EraseBytes- DE: "\377\377\377\377\377\377\377\017"-
+#18	NEW    cov: 118 ft: 296 corp: 10/2224b lim: 333 exec/s: 0 rss: 29Mb L: 163/333 MS: 1 EraseBytes-
+#24	REDUCE cov: 118 ft: 296 corp: 10/2132b lim: 333 exec/s: 0 rss: 29Mb L: 231/333 MS: 1 EraseBytes-
+#26	NEW    cov: 118 ft: 297 corp: 11/2392b lim: 333 exec/s: 0 rss: 29Mb L: 260/333 MS: 2 ShuffleBytes-PersAutoDict- DE: "\377\377\377\377\377\377\377\017"-
+#31	NEW    cov: 119 ft: 298 corp: 12/2725b lim: 333 exec/s: 0 rss: 29Mb L: 333/333 MS: 5 ChangeBit-CopyPart-ChangeByte-CopyPart-ChangeBit-
+#33	NEW    cov: 119 ft: 300 corp: 13/2851b lim: 333 exec/s: 0 rss: 29Mb L: 126/333 MS: 2 CrossOver-InsertRepeatedBytes-
+#35	NEW    cov: 119 ft: 302 corp: 14/3013b lim: 333 exec/s: 0 rss: 29Mb L: 162/333 MS: 2 ShuffleBytes-InsertRepeatedBytes-
+#37	NEW    cov: 120 ft: 304 corp: 15/3346b lim: 333 exec/s: 0 rss: 29Mb L: 333/333 MS: 2 CrossOver-CMP- DE: "\000\000\000\010"-
+#39	NEW    cov: 120 ft: 305 corp: 16/3607b lim: 333 exec/s: 0 rss: 29Mb L: 261/333 MS: 2 PersAutoDict-InsertByte- DE: "\000\000\000\010"-
+#41	NEW    cov: 120 ft: 306 corp: 17/3791b lim: 333 exec/s: 0 rss: 29Mb L: 184/333 MS: 2 ChangeByte-InsertRepeatedBytes-
+#45	NEW    cov: 120 ft: 307 corp: 18/4000b lim: 333 exec/s: 0 rss: 29Mb L: 209/333 MS: 4 CopyPart-InsertRepeatedBytes-CrossOver-CrossOver-
+#54	NEW    cov: 120 ft: 312 corp: 19/4220b lim: 333 exec/s: 0 rss: 29Mb L: 220/333 MS: 4 ChangeBit-InsertRepeatedBytes-CMP-InsertRepeatedBytes- DE: "\000\000\000\010"-
+#64	NEW    cov: 120 ft: 313 corp: 20/4553b lim: 333 exec/s: 0 rss: 29Mb L: 333/333 MS: 5 ChangeBit-PersAutoDict-CMP-ChangeBinInt-CopyPart- DE: "\000\000\000\010"-"mfra"-
+#74	NEW    cov: 120 ft: 314 corp: 21/4788b lim: 333 exec/s: 0 rss: 29Mb L: 235/333 MS: 5 ShuffleBytes-ChangeBit-CrossOver-ChangeByte-PersAutoDict- DE: "mfra"-
+#83	REDUCE cov: 120 ft: 314 corp: 21/4687b lim: 333 exec/s: 0 rss: 29Mb L: 232/333 MS: 4 ShuffleBytes-CrossOver-ChangeASCIIInt-EraseBytes-
+#88	NEW    cov: 120 ft: 315 corp: 22/4986b lim: 333 exec/s: 0 rss: 29Mb L: 299/333 MS: 5 ChangeBit-ChangeByte-PersAutoDict-ShuffleBytes-CrossOver- DE: "mfra"-
+#94	NEW    cov: 120 ft: 316 corp: 23/5070b lim: 333 exec/s: 0 rss: 29Mb L: 84/333 MS: 1 CopyPart-
+#95	NEW    cov: 120 ft: 320 corp: 24/5126b lim: 333 exec/s: 0 rss: 29Mb L: 56/333 MS: 1 CopyPart-
+#99	NEW    cov: 120 ft: 329 corp: 25/5416b lim: 333 exec/s: 0 rss: 29Mb L: 290/333 MS: 4 ChangeByte-ChangeBit-CrossOver-CMP- DE: "\377\377\377\007"-
+#101	NEW    cov: 120 ft: 330 corp: 26/5528b lim: 333 exec/s: 0 rss: 29Mb L: 112/333 MS: 2 ShuffleBytes-EraseBytes-
+#116	NEW    cov: 120 ft: 332 corp: 27/5615b lim: 333 exec/s: 0 rss: 29Mb L: 87/333 MS: 5 CMP-InsertByte-ChangeByte-CMP-CopyPart- DE: "\037\000"-"p\0072\000"-
+#117	NEW    cov: 120 ft: 347 corp: 28/5667b lim: 333 exec/s: 0 rss: 29Mb L: 52/333 MS: 1 CMP- DE: "\000\000\000 "-
+==219220== ERROR: libFuzzer: out-of-memory (used: 1554Mb; limit: 1024Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+MS: 4 CopyPart-InsertRepeatedBytes-ChangeBinInt-EraseBytes-; base unit: 896fc109a947a3a0b1f1eb9b520e1164045d6e70
+artifact_prefix='/results/crashes/20260313_153232_9068e823_'; Test unit written to /results/crashes/20260313_153232_9068e823_oom-6de8ef15ce47805769a640573c1aa3d47a89482b
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 121
+stat::average_exec_per_sec:     121
+stat::new_units_added:          26
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              1554

@@ -1,0 +1,23 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3574944174
+INFO: Loaded 1 modules   (252 inline 8-bit counters): 252 [0x565438e93678, 0x565438e93774), 
+INFO: Loaded 1 PC tables (252 PCs): 252 [0x565438e93778,0x565438e94738), 
+INFO:        4 files found in /tmp/corpus_20260313_182721_e7a0e91d
+INFO: seed corpus: files: 4 min: 48b max: 333b total: 853b rss: 28Mb
+#5	INITED cov: 118 ft: 254 corp: 4/853b exec/s: 0 rss: 29Mb
+#7	NEW    cov: 118 ft: 268 corp: 5/1035b lim: 333 exec/s: 0 rss: 29Mb L: 182/333 MS: 2 ChangeBinInt-EraseBytes-
+#8	NEW    cov: 118 ft: 279 corp: 6/1083b lim: 333 exec/s: 0 rss: 29Mb L: 48/333 MS: 1 CMP- DE: "avc1"-
+#9	NEW    cov: 118 ft: 280 corp: 7/1416b lim: 333 exec/s: 0 rss: 29Mb L: 333/333 MS: 1 ShuffleBytes-
+#10	NEW    cov: 119 ft: 283 corp: 8/1661b lim: 333 exec/s: 0 rss: 29Mb L: 245/333 MS: 1 CrossOver-
+#12	NEW    cov: 119 ft: 284 corp: 9/1709b lim: 333 exec/s: 0 rss: 29Mb L: 48/333 MS: 2 PersAutoDict-ChangeBinInt- DE: "avc1"-
+==770051== ERROR: libFuzzer: out-of-memory (used: 1565Mb; limit: 1024Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+MS: 2 CopyPart-PersAutoDict- DE: "avc1"-; base unit: 336a22952942f170271d75d74d22444c9750cee2
+artifact_prefix='/results/crashes/20260313_182721_e7a0e91d_'; Test unit written to /results/crashes/20260313_182721_e7a0e91d_oom-0320c797ff15607522a05446ecdd9cff4a98fce1
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 24
+stat::average_exec_per_sec:     24
+stat::new_units_added:          5
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              1565

@@ -1,0 +1,26 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1175019292
+INFO: Loaded 1 modules   (252 inline 8-bit counters): 252 [0x6106c84aa678, 0x6106c84aa774), 
+INFO: Loaded 1 PC tables (252 PCs): 252 [0x6106c84aa778,0x6106c84ab738), 
+INFO:        4 files found in /tmp/corpus_20260313_183436_349ca937
+INFO: seed corpus: files: 4 min: 48b max: 333b total: 853b rss: 28Mb
+#5	INITED cov: 118 ft: 251 corp: 4/853b exec/s: 0 rss: 28Mb
+#7	NEW    cov: 119 ft: 267 corp: 5/1086b lim: 333 exec/s: 0 rss: 28Mb L: 233/333 MS: 2 ShuffleBytes-CrossOver-
+#11	NEW    cov: 119 ft: 272 corp: 6/1419b lim: 333 exec/s: 0 rss: 28Mb L: 333/333 MS: 4 CMP-ChangeBinInt-ChangeByte-CopyPart- DE: "trak"-
+#15	NEW    cov: 119 ft: 278 corp: 7/1604b lim: 333 exec/s: 0 rss: 28Mb L: 185/333 MS: 4 EraseBytes-CMP-ChangeBit-CopyPart- DE: "N7ISOBMFF3BoxE"-
+#16	NEW    cov: 119 ft: 279 corp: 8/1793b lim: 333 exec/s: 0 rss: 28Mb L: 189/333 MS: 1 EraseBytes-
+#18	NEW    cov: 120 ft: 282 corp: 9/2100b lim: 333 exec/s: 0 rss: 28Mb L: 307/333 MS: 2 CopyPart-InsertRepeatedBytes-
+#19	NEW    cov: 120 ft: 292 corp: 10/2204b lim: 333 exec/s: 0 rss: 28Mb L: 104/333 MS: 1 CrossOver-
+#22	NEW    cov: 120 ft: 293 corp: 11/2535b lim: 333 exec/s: 0 rss: 28Mb L: 331/333 MS: 3 InsertRepeatedBytes-ChangeBit-CrossOver-
+#29	NEW    cov: 120 ft: 295 corp: 12/2868b lim: 333 exec/s: 0 rss: 28Mb L: 333/333 MS: 2 ShuffleBytes-CrossOver-
+==792054== ERROR: libFuzzer: out-of-memory (used: 1544Mb; limit: 1024Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+MS: 5 CMP-EraseBytes-CMP-CMP-CrossOver- DE: "tapt"-"edts"-"hvcC"-; base unit: 896fc109a947a3a0b1f1eb9b520e1164045d6e70
+artifact_prefix='/results/crashes/20260313_183436_349ca937_'; Test unit written to /results/crashes/20260313_183436_349ca937_oom-e016a6fbe2aaa55cbba6fa41714253d3fa7aa558
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 34
+stat::average_exec_per_sec:     34
+stat::new_units_added:          8
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              1544

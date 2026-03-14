@@ -1,68 +1,77 @@
 #!/usr/bin/env bash
-# setup.sh — installs deps, clones & builds ISOBMFF, builds harness
+# setup.sh — installs deps, clones & builds ISOBMFF with AFL++, builds harness
 set -euo pipefail
 
 echo "[*] Installing dependencies..."
 apt-get update -qq
 apt-get install -y -qq \
-  clang llvm lld \
   afl++ \
+  clang llvm lld \
   git make cmake \
   python3 python3-pip \
   curl xxd \
   libstdc++-dev
 
+# Verify AFL++ installation
+if ! command -v afl-fuzz &>/dev/null; then
+    echo "[!] afl-fuzz not found after install. Trying from source..."
+    git clone --depth=1 https://github.com/AFLplusplus/AFLplusplus.git /opt/AFLplusplus
+    cd /opt/AFLplusplus && make -j$(nproc) && make install
+fi
+
+echo "[*] AFL++ version: $(afl-fuzz --version 2>&1 | head -1)"
+
+# ── Clone ISOBMFF ──────────────────────────────────────────────────────────────
 echo "[*] Cloning ISOBMFF..."
 if [ ! -d /opt/ISOBMFF ]; then
     git clone --depth=1 https://github.com/DigiDNA/ISOBMFF.git /opt/ISOBMFF
 fi
 
-echo "[*] Building ISOBMFF with coverage + sanitizers..."
+# ── Build ISOBMFF with AFL++ instrumentation + ASAN/UBSAN ─────────────────────
+echo "[*] Building ISOBMFF with AFL++ instrumentation (ASAN + UBSAN)..."
 cd /opt/ISOBMFF
 
-# Patch Makefile to use clang and add flags
-export CXX=clang++
-export CC=clang
-export CXXFLAGS="-std=c++17 -fsanitize=address,undefined -fprofile-instr-generate -fcoverage-mapping -fno-omit-frame-pointer"
+export CXX=afl-clang-fast++
+export CC=afl-clang-fast
+export CXXFLAGS="-std=c++17 -fsanitize=address,undefined -fno-omit-frame-pointer"
+export AFL_USE_ASAN=1
+export AFL_USE_UBSAN=1
 
-make -j$(nproc) 2>&1 | tail -5 || {
-    echo "[!] ISOBMFF make failed, trying alternative build..."
-    # Some versions need manual compilation
+make -j$(nproc) 2>&1 | tail -10 || {
+    echo "[!] ISOBMFF make failed, trying manual compilation..."
     mkdir -p Build/Products
-    find ISOBMFF/source -name "*.cpp" | xargs \
-      ${CXX} ${CXXFLAGS} -IISOBMFF/include -c 2>&1 | tail -10
-    ar rcs Build/Products/libISOBMFF.a *.o 2>/dev/null || true
+    find ISOBMFF/source -name "*.cpp" | while read -r src; do
+        obj=$(basename "${src%.cpp}.o")
+        ${CXX} ${CXXFLAGS} -IISOBMFF/include -c "$src" -o "/tmp/${obj}" 2>&1 | tail -3 || true
+    done
+    ar rcs Build/Products/libISOBMFF.a /tmp/*.o 2>/dev/null || true
+    echo "[~] Manual build done"
 }
 
-echo "[*] Building fuzzer harness..."
+# ── Build fuzzer harness ───────────────────────────────────────────────────────
+echo "[*] Building AFL++ fuzzer harness..."
 cd /fuzzer
-make libfuzzer
+make afl
 
-echo "[*] Creating minimal MP4 corpus..."
+echo "[*] Building standalone crash-replay binary..."
+make standalone
+
+# ── Create seed corpus ─────────────────────────────────────────────────────────
+echo "[*] Creating seed corpus..."
 mkdir -p /fuzzer/corpus
+python3 /scripts/make_corpus.py
 
-# Minimal valid ftyp box (MP4 file magic bytes)
-python3 -c "
-import struct
-# ftyp box: size(4) + 'ftyp'(4) + 'mp41'(4) + version(4) + 'mp41'(4)
-box = struct.pack('>I', 24) + b'ftyp' + b'mp41' + struct.pack('>I', 0) + b'mp41'
-# mdat box: empty
-box += struct.pack('>I', 8) + b'mdat'
-open('/fuzzer/corpus/minimal.mp4', 'wb').write(box)
-print('Created minimal.mp4')
-"
+# ── AFL++ system config (best-effort, may fail in Docker) ─────────────────────
+echo "[*] Configuring system for AFL++..."
+echo core > /proc/sys/kernel/core_pattern 2>/dev/null \
+    && echo "[+] core_pattern set" \
+    || echo "[~] Could not set core_pattern (normal in some containers)"
 
-# Minimal moov box
-python3 -c "
-import struct
-def box(name, data=b''):
-    return struct.pack('>I', 8 + len(data)) + name.encode() + data
+# Disable ASLR for better coverage stability
+echo 0 > /proc/sys/kernel/randomize_va_space 2>/dev/null \
+    && echo "[+] ASLR disabled" \
+    || echo "[~] Could not disable ASLR (normal in some containers)"
 
-mvhd_data = struct.pack('>IIIIIII', 0, 0, 0, 1000, 0, 0x00010000, 0x0100) + b'\x00' * 60
-moov = box('mvhd', mvhd_data)
-root = box('ftyp', b'isom\x00\x00\x00\x00isom') + box('moov', moov)
-open('/fuzzer/corpus/minimal_moov.mp4', 'wb').write(root)
-print('Created minimal_moov.mp4')
-"
-
-echo "[+] Setup complete. Run: /scripts/run_fuzzer.sh"
+echo "[+] Setup complete."
+echo "[+] Run fuzzer: /scripts/run_fuzzer.sh"
+echo "[+] Or directly: afl-fuzz -i /fuzzer/corpus -o /results/afl_out/test -V 300 -- /fuzzer/fuzz_isobmff_afl"

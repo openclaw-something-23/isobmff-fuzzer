@@ -1,0 +1,32 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 500781254
+INFO: Loaded 1 modules   (252 inline 8-bit counters): 252 [0x5d926d6d4678, 0x5d926d6d4774), 
+INFO: Loaded 1 PC tables (252 PCs): 252 [0x5d926d6d4778,0x5d926d6d5738), 
+INFO:        4 files found in /tmp/corpus_20260313_191545_bfb88ab9
+INFO: seed corpus: files: 4 min: 48b max: 333b total: 853b rss: 28Mb
+#5	INITED cov: 117 ft: 250 corp: 4/853b exec/s: 0 rss: 29Mb
+#7	NEW    cov: 118 ft: 258 corp: 5/1121b lim: 333 exec/s: 0 rss: 29Mb L: 268/333 MS: 2 ChangeBit-CrossOver-
+#9	NEW    cov: 118 ft: 280 corp: 6/1259b lim: 333 exec/s: 0 rss: 29Mb L: 138/333 MS: 2 EraseBytes-EraseBytes-
+#10	NEW    cov: 118 ft: 297 corp: 7/1308b lim: 333 exec/s: 0 rss: 29Mb L: 49/333 MS: 1 InsertByte-
+#11	NEW    cov: 118 ft: 306 corp: 8/1580b lim: 333 exec/s: 0 rss: 29Mb L: 272/333 MS: 1 CMP- DE: "dinf"-
+#15	NEW    cov: 118 ft: 316 corp: 9/1656b lim: 333 exec/s: 0 rss: 29Mb L: 76/333 MS: 4 ShuffleBytes-PersAutoDict-EraseBytes-InsertRepeatedBytes- DE: "dinf"-
+#16	NEW    cov: 118 ft: 317 corp: 10/1928b lim: 333 exec/s: 0 rss: 29Mb L: 272/333 MS: 1 CopyPart-
+#23	NEW    cov: 118 ft: 318 corp: 11/2061b lim: 333 exec/s: 0 rss: 29Mb L: 133/333 MS: 2 ShuffleBytes-CopyPart-
+#25	NEW    cov: 119 ft: 320 corp: 12/2197b lim: 333 exec/s: 0 rss: 29Mb L: 136/333 MS: 2 ShuffleBytes-EraseBytes-
+#30	NEW    cov: 120 ft: 327 corp: 13/2521b lim: 333 exec/s: 0 rss: 29Mb L: 324/333 MS: 5 ShuffleBytes-ChangeBit-ChangeBit-ShuffleBytes-InsertRepeatedBytes-
+#32	NEW    cov: 120 ft: 328 corp: 14/2593b lim: 333 exec/s: 0 rss: 29Mb L: 72/333 MS: 2 InsertByte-EraseBytes-
+#40	NEW    cov: 120 ft: 329 corp: 15/2860b lim: 333 exec/s: 0 rss: 29Mb L: 267/333 MS: 3 ChangeASCIIInt-InsertRepeatedBytes-CrossOver-
+#45	NEW    cov: 120 ft: 330 corp: 16/2945b lim: 333 exec/s: 0 rss: 29Mb L: 85/333 MS: 5 PersAutoDict-ShuffleBytes-EraseBytes-InsertByte-InsertRepeatedBytes- DE: "dinf"-
+#47	NEW    cov: 120 ft: 331 corp: 17/3201b lim: 333 exec/s: 0 rss: 29Mb L: 256/333 MS: 2 ShuffleBytes-CMP- DE: "schm"-
+#50	NEW    cov: 120 ft: 334 corp: 18/3364b lim: 333 exec/s: 0 rss: 29Mb L: 163/333 MS: 3 ChangeBinInt-ChangeASCIIInt-EraseBytes-
+==919734== ERROR: libFuzzer: out-of-memory (used: 1431Mb; limit: 1024Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+MS: 1 CMP- DE: "avc1"-; base unit: f64e83bc2b085319a57de559baea9eed279c3861
+artifact_prefix='/results/crashes/20260313_191545_bfb88ab9_'; Test unit written to /results/crashes/20260313_191545_bfb88ab9_oom-a204bb781a67eae7db83e71f2ac80ebdfb0d0dba
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 61
+stat::average_exec_per_sec:     61
+stat::new_units_added:          14
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              1432

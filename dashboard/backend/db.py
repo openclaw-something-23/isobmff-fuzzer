@@ -80,47 +80,80 @@ def init_db():
             WHERE status='running'
         """)
 
+def _read_coverage_summary(cov_dir: str, run_id: str) -> dict:
+    """Read coverage summary JSON for a run, return dict with lines_pct/funcs_pct."""
+    summary_file = os.path.join(cov_dir, f"{run_id}_summary.json")
+    if not os.path.isfile(summary_file):
+        return {}
+    try:
+        with open(summary_file) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
 def scan_and_import_results(results_dir: str = "/results"):
-    """Import any run metadata files not yet in DB."""
+    """Import any run metadata files not yet in DB, and patch coverage for existing rows."""
     runs_dir = os.path.join(results_dir, "runs")
+    cov_dir  = os.path.join(results_dir, "coverage")
     if not os.path.isdir(runs_dir):
         return
 
     with get_db() as conn:
-        existing = {row[0] for row in conn.execute("SELECT run_id FROM runs")}
+        existing = {row[0]: row[1] for row in conn.execute(
+            "SELECT run_id, cov_lines_pct FROM runs"
+        )}
 
     for run_id in os.listdir(runs_dir):
-        if run_id in existing:
-            continue
         meta_file = os.path.join(runs_dir, run_id, "meta.json")
         if not os.path.isfile(meta_file):
             continue
+
+        # If already imported and has real coverage, skip
+        if run_id in existing and existing[run_id] > 0:
+            continue
+
         try:
             with open(meta_file) as f:
                 meta = json.load(f)
-            with get_db() as conn:
-                conn.execute("""
-                    INSERT OR REPLACE INTO runs
-                    (run_id, status, started_at, ended_at, duration_sec,
-                     crashes, cov_edges, cov_lines_pct, cov_funcs_pct,
-                     execs_per_sec, score, exit_code)
-                    VALUES (:run_id, :status, :started_at, :ended_at, :duration_sec,
-                            :crashes, :cov_edges, :cov_lines_pct, :cov_funcs_pct,
-                            :execs_per_sec, :score, :exit_code)
-                """, {
-                    "run_id": meta.get("run_id", run_id),
-                    "status": meta.get("status", "done"),
-                    "started_at": meta.get("started_at", 0),
-                    "ended_at": meta.get("ended_at", 0),
-                    "duration_sec": meta.get("duration_sec", 0),
-                    "crashes": meta.get("crashes", 0),
-                    "cov_edges": meta.get("cov_edges", 0),
-                    "cov_lines_pct": float(meta.get("cov_lines_pct", 0)),
-                    "cov_funcs_pct": float(meta.get("cov_funcs_pct", 0)),
-                    "execs_per_sec": meta.get("execs_per_sec", 0),
-                    "score": meta.get("score", 0),
-                    "exit_code": meta.get("exit_code", 0),
-                })
+
+            # Prefer coverage summary JSON (written by fixed collect_coverage.sh)
+            cov = _read_coverage_summary(cov_dir, run_id)
+            lines_pct = float(cov.get("lines_pct", meta.get("cov_lines_pct", 0)) or 0)
+            funcs_pct = float(cov.get("funcs_pct", meta.get("cov_funcs_pct", 0)) or 0)
+
+            if run_id in existing:
+                # Already in DB but coverage is 0 — patch just the coverage columns
+                if lines_pct > 0:
+                    with get_db() as conn:
+                        conn.execute(
+                            "UPDATE runs SET cov_lines_pct=?, cov_funcs_pct=? WHERE run_id=?",
+                            (lines_pct, funcs_pct, run_id)
+                        )
+            else:
+                # New row — full insert
+                with get_db() as conn:
+                    conn.execute("""
+                        INSERT OR REPLACE INTO runs
+                        (run_id, status, started_at, ended_at, duration_sec,
+                         crashes, cov_edges, cov_lines_pct, cov_funcs_pct,
+                         execs_per_sec, score, exit_code)
+                        VALUES (:run_id, :status, :started_at, :ended_at, :duration_sec,
+                                :crashes, :cov_edges, :cov_lines_pct, :cov_funcs_pct,
+                                :execs_per_sec, :score, :exit_code)
+                    """, {
+                        "run_id": meta.get("run_id", run_id),
+                        "status": meta.get("status", "done"),
+                        "started_at": meta.get("started_at", 0),
+                        "ended_at": meta.get("ended_at", 0),
+                        "duration_sec": meta.get("duration_sec", 0),
+                        "crashes": meta.get("crashes", 0),
+                        "cov_edges": meta.get("cov_edges", 0),
+                        "cov_lines_pct": lines_pct,
+                        "cov_funcs_pct": funcs_pct,
+                        "execs_per_sec": meta.get("execs_per_sec", 0),
+                        "score": meta.get("score", 0),
+                        "exit_code": meta.get("exit_code", 0),
+                    })
         except Exception as e:
             print(f"[!] Failed to import {run_id}: {e}")
 

@@ -1,0 +1,41 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4167868600
+INFO: Loaded 1 modules   (252 inline 8-bit counters): 252 [0x5b629ccd6678, 0x5b629ccd6774), 
+INFO: Loaded 1 PC tables (252 PCs): 252 [0x5b629ccd6778,0x5b629ccd7738), 
+INFO:        4 files found in /tmp/corpus_20260313_150551_0725effa
+INFO: seed corpus: files: 4 min: 48b max: 333b total: 853b rss: 28Mb
+#5	INITED cov: 117 ft: 250 corp: 4/853b exec/s: 0 rss: 29Mb
+#7	NEW    cov: 117 ft: 278 corp: 5/934b lim: 333 exec/s: 0 rss: 29Mb L: 81/333 MS: 2 ChangeBit-CrossOver-
+#9	NEW    cov: 117 ft: 302 corp: 6/986b lim: 333 exec/s: 0 rss: 29Mb L: 52/333 MS: 2 ChangeASCIIInt-CMP- DE: "ipco"-
+#12	NEW    cov: 118 ft: 303 corp: 7/1248b lim: 333 exec/s: 0 rss: 29Mb L: 262/333 MS: 3 ChangeBinInt-CrossOver-CrossOver-
+#14	NEW    cov: 118 ft: 311 corp: 8/1388b lim: 333 exec/s: 0 rss: 29Mb L: 140/333 MS: 2 CMP-EraseBytes- DE: "\000\000\000 "-
+#19	NEW    cov: 118 ft: 316 corp: 9/1703b lim: 333 exec/s: 0 rss: 29Mb L: 315/333 MS: 5 CopyPart-ChangeASCIIInt-EraseBytes-ChangeByte-CrossOver-
+#21	NEW    cov: 118 ft: 317 corp: 10/2022b lim: 333 exec/s: 0 rss: 29Mb L: 319/333 MS: 2 ChangeByte-PersAutoDict- DE: "ipco"-
+#22	NEW    cov: 118 ft: 322 corp: 11/2236b lim: 333 exec/s: 0 rss: 29Mb L: 214/333 MS: 1 EraseBytes-
+#23	REDUCE cov: 118 ft: 322 corp: 11/2235b lim: 333 exec/s: 0 rss: 29Mb L: 251/333 MS: 1 EraseBytes-
+#27	REDUCE cov: 119 ft: 323 corp: 12/2496b lim: 333 exec/s: 0 rss: 29Mb L: 261/333 MS: 4 CrossOver-ChangeBit-ChangeBit-CrossOver-
+#33	NEW    cov: 119 ft: 333 corp: 13/2662b lim: 333 exec/s: 0 rss: 29Mb L: 166/333 MS: 1 EraseBytes-
+#37	NEW    cov: 119 ft: 337 corp: 14/2884b lim: 333 exec/s: 0 rss: 29Mb L: 222/333 MS: 4 CrossOver-ChangeByte-PersAutoDict-CMP- DE: "\000\000\000 "-"\017\000"-
+#49	NEW    cov: 119 ft: 338 corp: 15/2937b lim: 333 exec/s: 0 rss: 29Mb L: 53/333 MS: 2 ShuffleBytes-CopyPart-
+#62	NEW    cov: 119 ft: 339 corp: 16/3256b lim: 333 exec/s: 0 rss: 29Mb L: 319/333 MS: 3 ChangeBit-PersAutoDict-CrossOver- DE: "ipco"-
+#71	NEW    cov: 119 ft: 340 corp: 17/3354b lim: 333 exec/s: 0 rss: 29Mb L: 98/333 MS: 4 ChangeByte-ChangeBinInt-CopyPart-ChangeBit-
+#93	NEW    cov: 119 ft: 341 corp: 18/3616b lim: 333 exec/s: 0 rss: 29Mb L: 262/333 MS: 2 ChangeASCIIInt-ChangeBit-
+#94	NEW    cov: 119 ft: 342 corp: 19/3882b lim: 333 exec/s: 0 rss: 29Mb L: 266/333 MS: 1 PersAutoDict- DE: "ipco"-
+#99	NEW    cov: 119 ft: 344 corp: 20/4208b lim: 333 exec/s: 0 rss: 29Mb L: 326/333 MS: 5 CopyPart-CMP-ShuffleBytes-ShuffleBytes-CopyPart- DE: "N7ISOBMFF12Cont"-
+#103	NEW    cov: 119 ft: 345 corp: 21/4344b lim: 333 exec/s: 0 rss: 29Mb L: 136/333 MS: 4 InsertByte-CopyPart-PersAutoDict-CopyPart- DE: "ipco"-
+#106	NEW    cov: 119 ft: 346 corp: 22/4676b lim: 333 exec/s: 0 rss: 29Mb L: 332/333 MS: 3 ShuffleBytes-InsertByte-CrossOver-
+#108	NEW    cov: 119 ft: 347 corp: 23/4745b lim: 333 exec/s: 0 rss: 29Mb L: 69/333 MS: 2 EraseBytes-ChangeBit-
+#112	NEW    cov: 120 ft: 348 corp: 24/4866b lim: 333 exec/s: 0 rss: 29Mb L: 121/333 MS: 4 ChangeBit-ShuffleBytes-InsertByte-EraseBytes-
+#113	NEW    cov: 120 ft: 349 corp: 25/5195b lim: 333 exec/s: 0 rss: 29Mb L: 329/333 MS: 1 InsertRepeatedBytes-
+#122	NEW    cov: 120 ft: 352 corp: 26/5501b lim: 333 exec/s: 0 rss: 29Mb L: 306/333 MS: 4 CrossOver-ChangeByte-CopyPart-InsertRepeatedBytes-
+==133844== ERROR: libFuzzer: out-of-memory (used: 1511Mb; limit: 1024Mb)
+   To change the out-of-memory limit use -rss_limit_mb=<N>
+
+MS: 2 ChangeBit-InsertRepeatedBytes-; base unit: 4efab4fa901eddb2d1d77c5f3e58ef51c15fdf88
+artifact_prefix='/results/crashes/20260313_150551_0725effa_'; Test unit written to /results/crashes/20260313_150551_0725effa_oom-731026fd38039d48814048bf03fdce51072a37a3
+SUMMARY: libFuzzer: out-of-memory
+stat::number_of_executed_units: 124
+stat::average_exec_per_sec:     124
+stat::new_units_added:          23
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              1511
