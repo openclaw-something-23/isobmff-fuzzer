@@ -2,9 +2,10 @@
 ISOBMFF Fuzzer Dashboard — FastAPI Backend
 Port: 56789
 """
-import os, time, subprocess, json
+import os, time, subprocess, json, asyncio
 from typing import Optional
 from pathlib import Path
+import httpx
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Form
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +24,68 @@ DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "helloworld")
 SECRET_KEY         = os.environ.get("SECRET_KEY", "fuzzer-secret-key-change-me")
 SESSION_MAX_AGE    = 60 * 60 * 24 * 7
 COOKIE_NAME        = "fuzz_session"
+
+# ── Remote machines ───────────────────────────────────────────────────────────
+# Format: "label:url:password,label2:url2:password2"
+# e.g. REMOTE_MACHINES="powerhorse:http://16.16.169.131:56789:helloworld"
+_MACHINE_NAME      = os.environ.get("MACHINE_NAME", "local")
+
+def _parse_remotes() -> list[dict]:
+    raw = os.environ.get("REMOTE_MACHINES", "")
+    machines = []
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry: continue
+        parts = entry.split(":")
+        if len(parts) < 3: continue
+        # url may contain ":" (http://host:port) — rejoin correctly
+        label = parts[0]
+        password = parts[-1]
+        url = ":".join(parts[1:-1])
+        machines.append({"name": label, "url": url, "password": password, "token": None})
+    return machines
+
+REMOTE_MACHINES: list[dict] = _parse_remotes()
+
+async def _get_remote_token(machine: dict) -> Optional[str]:
+    """Login to a remote dashboard and return session cookie."""
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.post(
+                f"{machine['url']}/auth/login",
+                data={"password": machine["password"]},
+                follow_redirects=False
+            )
+            cookie = r.cookies.get("fuzz_session")
+            if cookie:
+                machine["token"] = cookie
+                return cookie
+    except Exception:
+        pass
+    return None
+
+async def _remote_get(machine: dict, endpoint: str) -> Optional[dict]:
+    """GET an endpoint from a remote machine, auto-login if needed."""
+    for attempt in range(2):
+        if not machine.get("token"):
+            await _get_remote_token(machine)
+        if not machine.get("token"):
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(
+                    f"{machine['url']}{endpoint}",
+                    cookies={"fuzz_session": machine["token"]}
+                )
+                if r.status_code == 401:
+                    machine["token"] = None
+                    continue
+                if r.status_code == 200:
+                    return r.json()
+        except Exception:
+            pass
+        break
+    return None
 
 signer = URLSafeTimedSerializer(SECRET_KEY)
 
@@ -209,6 +272,10 @@ async def get_stats(request: Request):
         "corpus_total": corpus_total,
         "corpus_found_cumulative": int(total_corpus_found or 0),
         "updated_at": int(time.time()),
+        "machine_name": _MACHINE_NAME,
+        "edges_found": int(best_edges),
+        "crashes_found": total_crashes,
+        "corpus_count": corpus_total,
     }
 
 # ── Runs ──────────────────────────────────────────────────────────────────────
@@ -313,6 +380,12 @@ async def live_stats(request: Request):
     age = int(time.time()) - data.get("updated_at", 0)
     data["stale"] = age > 60
     data["running"] = True
+    data["machine_name"] = _MACHINE_NAME
+    # ensure keys expected by machines panel
+    data.setdefault("instances", data.get("afl_instances", 1))
+    data.setdefault("edges_found", data.get("map_size", 0))
+    data.setdefault("corpus_count", data.get("corpus_count", 0))
+    data.setdefault("crashes_found", data.get("unique_crashes", 0))
     return data
 
 
@@ -428,6 +501,76 @@ async def rescan(request: Request, background_tasks: BackgroundTasks):
     check_auth(request)
     background_tasks.add_task(scan_and_import_results, RESULTS_DIR)
     return {"ok": True}
+
+# ── Multi-machine endpoints ───────────────────────────────────────────────────
+
+@app.get("/api/machines")
+async def list_machines(request: Request):
+    """Return stats for this machine + all configured remote machines."""
+    check_auth(request)
+
+    async def local_stats():
+        # Gather local stats inline
+        from db import get_db
+        try:
+            stats_path = Path(RESULTS_DIR) / "live_stats.json"
+            live = json.loads(stats_path.read_text()) if stats_path.exists() else {}
+        except Exception:
+            live = {}
+        try:
+            mp4_path = Path(RESULTS_DIR) / "mp4gen_stats.json"
+            mp4 = json.loads(mp4_path.read_text()) if mp4_path.exists() else {}
+        except Exception:
+            mp4 = {}
+        try:
+            with get_db() as conn:
+                row = conn.execute(
+                    "SELECT SUM(crashes) as c, MAX(cov_edges) as e FROM runs"
+                ).fetchone()
+                total_crashes = (row["c"] or 0) if row else 0
+                max_edges     = (row["e"] or 0) if row else 0
+        except Exception:
+            total_crashes, max_edges = 0, 0
+
+        return {
+            "name": _MACHINE_NAME,
+            "url": "local",
+            "status": "local",
+            "live": live,
+            "mp4gen": mp4,
+            "total_crashes": total_crashes,
+            "max_edges": max_edges,
+        }
+
+    async def remote_stats(machine: dict):
+        stats_data  = await _remote_get(machine, "/api/stats")
+        live_data   = await _remote_get(machine, "/api/live")
+        mp4gen_data = await _remote_get(machine, "/api/mp4gen")
+        ok = stats_data is not None
+        return {
+            "name": machine["name"],
+            "url": machine["url"],
+            "status": "ok" if ok else "unreachable",
+            "stats": stats_data,
+            "live": live_data,
+            "mp4gen": mp4gen_data,
+        }
+
+    tasks = [local_stats()] + [remote_stats(m) for m in REMOTE_MACHINES]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    return [r for r in results if isinstance(r, dict)]
+
+@app.get("/api/machines/{machine_name}/{endpoint:path}")
+async def proxy_machine(request: Request, machine_name: str, endpoint: str):
+    """Proxy any /api/* call to a named remote machine."""
+    check_auth(request)
+    machine = next((m for m in REMOTE_MACHINES if m["name"] == machine_name), None)
+    if not machine:
+        raise HTTPException(404, f"Machine '{machine_name}' not configured")
+    data = await _remote_get(machine, f"/api/{endpoint}")
+    if data is None:
+        raise HTTPException(502, f"Could not reach {machine_name}")
+    return data
 
 # ── Static ────────────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="/dashboard/static"), name="static")

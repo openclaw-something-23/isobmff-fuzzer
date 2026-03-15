@@ -10,6 +10,7 @@ services:
       - DB_PATH=/results/fuzzer.db
       - RESULTS_DIR=/results
       - DASHBOARD_PASSWORD=helloworld
+      - MACHINE_NAME=powerhorse
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:56789/"]
       interval: 15s
