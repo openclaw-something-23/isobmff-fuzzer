@@ -694,11 +694,12 @@ async function doRescan() {
 // ── MP4gen stats ─────────────────────────────────────────────────────────────
 async function loadMp4gen() {
   try {
-    const r = await fetch('/api/mp4gen');
+    const r = await fetch('/api/mp4gen', { credentials: 'include' });
     if (!r.ok) return;
     const d = await r.json();
 
     const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
     set('mp4gen-generated',  fmt(d.total_generated || 0));
     set('mp4gen-cmin',       fmt(d.total_cmin || 0));
