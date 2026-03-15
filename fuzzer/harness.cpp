@@ -1,13 +1,15 @@
 /*
  * ISOBMFF Fuzzing Harness — AFL++ (primary) + libFuzzer (compatibility)
  *
- * Improvements in this version:
+ * Improvements:
  *   1. memfd_create: anonymous in-memory file — no /dev/shm I/O → 3-5× speed
  *   2. Deep traversal: calls ALL ISOBMFF box-specific getters to expose
  *      2-3× more library code (TKHD, HDLR, STTS, STSS, ILOC, IINF, AVCC,
  *      HVCC, COLR, IPMA/IPCO, FTYP, DREF, and more)
  *   3. Box size sanitizer: recursive patch of all box size fields
  *   4. OOM guard: operator new capped at 8MB
+ *   5. Extended handlers: STCO, CO64, CTTS, STSC, STSZ, MVEX/TREX,
+ *      MOOF/TRAF/TFHD/TFDT/TRUN, PSSH, SINF/TENC, SMHD/VMHD
  */
 
 #include <ISOBMFF.hpp>
@@ -224,6 +226,108 @@ static void drain_box(const std::shared_ptr<ISOBMFF::Box>& box, int depth) {
             if (auto b = std::dynamic_pointer_cast<ISOBMFF::IPCO>(box)) {
                 drain_container(std::dynamic_pointer_cast<ISOBMFF::ContainerBox>(box), depth);
             }
+        }
+        // ── STCO / CO64 (chunk offset) ────────────────────────────────
+        else if (name == "stco" || name == "co64") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+                // Try generic entry count via displayable
+                SINK(name.size());
+            } catch(...) {}
+        }
+        // ── CTTS (composition time offset) ────────────────────────────
+        else if (name == "ctts") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── STSC (sample-to-chunk) ─────────────────────────────────────
+        else if (name == "stsc") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── STSZ / STZ2 (sample sizes) ────────────────────────────────
+        else if (name == "stsz" || name == "stz2") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── SDTP (sample dependency type) ──────────────────────────────
+        else if (name == "sdtp") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── MVEX / TREX (movie extends) ────────────────────────────────
+        else if (name == "mvex" || name == "trex" || name == "mehd") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+                if (auto c = std::dynamic_pointer_cast<ISOBMFF::ContainerBox>(box))
+                    drain_container(c, depth);
+            } catch(...) {}
+        }
+        // ── MOOF / MFHD (movie fragment) ──────────────────────────────
+        else if (name == "moof" || name == "mfhd") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+                if (auto c = std::dynamic_pointer_cast<ISOBMFF::ContainerBox>(box))
+                    drain_container(c, depth);
+            } catch(...) {}
+        }
+        // ── TRAF / TFHD / TFDT / TRUN (track fragment) ────────────────
+        else if (name == "traf" || name == "tfhd" || name == "tfdt" || name == "trun") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+                if (auto c = std::dynamic_pointer_cast<ISOBMFF::ContainerBox>(box))
+                    drain_container(c, depth);
+            } catch(...) {}
+        }
+        // ── PSSH (protection system specific header) ───────────────────
+        else if (name == "pssh") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── SINF / FRMA / SCHM / TENC (protection scheme) ─────────────
+        else if (name == "sinf" || name == "frma" || name == "schm" ||
+                 name == "tenc" || name == "schi") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+                if (auto c = std::dynamic_pointer_cast<ISOBMFF::ContainerBox>(box))
+                    drain_container(c, depth);
+            } catch(...) {}
+        }
+        // ── SMHD / VMHD / NMHD (media info headers) ───────────────────
+        else if (name == "smhd" || name == "vmhd" || name == "nmhd") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── ELST (edit list) ───────────────────────────────────────────
+        else if (name == "elst") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
+        }
+        // ── SBGP / SGPD (sample groups) ───────────────────────────────
+        else if (name == "sbgp" || name == "sgpd") {
+            try {
+                auto props = box->GetDisplayableProperties();
+                for (auto& kv : props) { SINK_S(kv.first); SINK_S(kv.second); }
+            } catch(...) {}
         }
         // ── Any ContainerBox — recurse ─────────────────────────────────
         else {

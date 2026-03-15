@@ -10,16 +10,21 @@ set -euo pipefail
 RESULTS="/results"
 SEEDS="${SEEDS:-/fuzzer/corpus}"
 HARNESS="/fuzzer/fuzz_isobmff_afl"
-CMPLOG_BIN="${CMPLOG_BIN:-/fuzzer/fuzz_isobmff_cmplog}"   # CMPLOG binary (optional)
-MUTATOR_SO="${MUTATOR_SO:-/fuzzer/isobmff_mutator.so}"    # custom mutator (optional)
-DICT="/fuzzer/isobmff.dict"
+# Improvement 8: use new harness from /results if available (hot-swap without rebuild)
+[ -x "/results/fuzz_isobmff_afl_new" ] && HARNESS="/results/fuzz_isobmff_afl_new"
+CMPLOG_BIN="${CMPLOG_BIN:-/fuzzer/fuzz_isobmff_cmplog}"
+# Improvement 2: use new mutator from /results if available
+MUTATOR_SO="${MUTATOR_SO:-/results/isobmff_mutator.so}"
+[ -f "$MUTATOR_SO" ] || MUTATOR_SO="/fuzzer/isobmff_mutator.so"
+DICT="${RESULTS}/isobmff.dict"
+[ ! -f "${DICT}" ] && DICT="/fuzzer/isobmff.dict"
 DASHBOARD_API="${DASHBOARD_API:-http://localhost:56789}"
 MAX_TOTAL_TIME="${MAX_TOTAL_TIME:-3600}"
 TIMEOUT_MS="${AFL_TIMEOUT:-5000}"
 AFL_CORES="${AFL_CORES:-1}"
 
-# Power schedule rotation (cycles through strategies across runs)
-SCHEDULES=("fast" "explore" "exploit" "mmopt" "rare")
+# Improvement 8: Extended power schedule rotation including COE and LIN
+SCHEDULES=("fast" "explore" "exploit" "mmopt" "rare" "coe" "lin" "quad")
 SCHEDULE_IDX_FILE="/results/.schedule_idx"
 SCHED_IDX=$(cat "${SCHEDULE_IDX_FILE}" 2>/dev/null || echo "0")
 SCHED_IDX=$(( SCHED_IDX % ${#SCHEDULES[@]} ))
@@ -104,8 +109,10 @@ DICT_FLAG=""
 
 # ── Custom mutator ────────────────────────────────────────────────────────────
 MUTATOR_FLAG=""
-[ -f "${MUTATOR_SO}" ] && MUTATOR_FLAG="AFL_CUSTOM_MUTATOR_LIBRARY=${MUTATOR_SO}" && \
+if [ -f "${MUTATOR_SO}" ]; then
+    export AFL_CUSTOM_MUTATOR_LIBRARY="${MUTATOR_SO}"
     echo "[*] Custom mutator: ${MUTATOR_SO}"
+fi
 
 # ── CMPLOG flag ───────────────────────────────────────────────────────────────
 CMPLOG_FLAG=""
@@ -115,8 +122,10 @@ CMPLOG_FLAG=""
 # ── Multi-instance launch ─────────────────────────────────────────────────────
 SECONDARY_PIDS=()
 
-eval "${MUTATOR_FLAG}" \
+# Improvement 10: AFL_MAP_SIZE=262144 for more precise edge tracking (was 65536)
 AFL_IGNORE_SEED_PROBLEMS=1 \
+AFL_MAP_SIZE=262144 \
+AFL_DISABLE_TRIM=0 \
 ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
 UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
 afl-fuzz \

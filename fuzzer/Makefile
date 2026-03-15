@@ -23,7 +23,7 @@ FUZZ_FLAGS    := -fsanitize=fuzzer
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: all afl libfuzzer standalone coverage clean
 
-all: afl
+all: afl mutator
 
 # ──────────────────────────────────────────────────────────────────────────────
 # AFL++ target (default)
@@ -95,5 +95,39 @@ coverage: libfuzzer
 	  > /results/coverage/coverage.html
 	@echo "[+] Coverage report at /results/coverage/"
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Custom mutator (shared library)
+# ──────────────────────────────────────────────────────────────────────────────
+mutator: isobmff_mutator.c
+	@echo "[*] Building custom ISOBMFF mutator..."
+	afl-clang-fast -shared -fPIC -O2 \
+	  isobmff_mutator.c \
+	  -o isobmff_mutator.so
+	@echo "[+] Built: ./isobmff_mutator.so"
+	@echo "[+] Use: AFL_CUSTOM_MUTATOR_LIBRARY=$$PWD/isobmff_mutator.so afl-fuzz ..."
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CMPLOG build — instruments comparison functions for better coverage
+# Use with: afl-fuzz -c ./fuzz_isobmff_cmplog ...
+# ──────────────────────────────────────────────────────────────────────────────
+cmplog: harness.cpp
+	@echo "[*] Building CMPLOG harness..."
+	AFL_USE_ASAN=1 AFL_USE_UBSAN=1 \
+	afl-clang-fast++ \
+	  -std=c++17 \
+	  -fno-omit-frame-pointer \
+	  -g -O1 \
+	  -I$(ISOBMFF_INC) \
+	  harness.cpp $(ISOBMFF_LIB) \
+	  -lstdc++ -lm \
+	  -o fuzz_isobmff_cmplog
+	AFL_USE_ASAN=1 afl-clang-fast++ -fsanitize=address,undefined \
+	  -fno-omit-frame-pointer -g -O1 \
+	  -I$(ISOBMFF_INC) harness.cpp $(ISOBMFF_LIB) -lstdc++ -lm \
+	  -o fuzz_isobmff_cmplog
+	@echo "[+] Built: ./fuzz_isobmff_cmplog"
+	@echo "[+] Use: afl-fuzz -c ./fuzz_isobmff_cmplog ..."
+
 clean:
-	rm -f fuzz_isobmff fuzz_isobmff_afl fuzz_isobmff_replay *.profraw *.profdata
+	rm -f fuzz_isobmff fuzz_isobmff_afl fuzz_isobmff_replay fuzz_isobmff_cmplog \
+	      isobmff_mutator.so *.profraw *.profdata

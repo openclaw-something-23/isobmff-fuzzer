@@ -176,3 +176,198 @@
 # ── Version/flags combos ──────────────────────────────────────────────────────
 "\x00\x00\x00\x00"   # version=0 flags=0
 "\x01\x00\x00\x00"   # version=1 flags=0
+
+# ── Additional box FourCCs — HEIF/AVIF/HEVC/DASH/segment boxes ──────────────
+"stco"  # Sample-to-chunk offset
+"co64"  # 64-bit chunk offset
+"ctts"  # Composition time offset
+"stsc"  # Sample-to-chunk
+"stsz"  # Sample size
+"stz2"  # Compact sample size
+"sdtp"  # Sample dependency type
+"sbgp"  # Sample-to-group
+"sgpd"  # Sample group description
+"subs"  # Sub-sample information
+"padb"  # Padding bits
+"stsh"  # Shadow sync sample
+"stsa"  # ?
+
+# ── Fragment/streaming boxes ──────────────────────────────────────────────────
+"moof"  # Movie Fragment Box
+"mfhd"  # Movie Fragment Header
+"traf"  # Track Fragment Box
+"tfhd"  # Track Fragment Header
+"tfdt"  # Track Fragment Base Media Decode Time
+"trun"  # Track Run Box
+"mfra"  # Movie Fragment Random Access
+"tfra"  # Track Fragment Random Access
+"mfro"  # Movie Fragment Random Access Offset
+"mvex"  # Movie Extends Box
+"mehd"  # Movie Extends Header
+"trex"  # Track Extends Box
+"leva"  # Level Assignment Box
+"sidx"  # Segment Index Box
+"ssix"  # Subsegment Index Box
+"saiz"  # Sample Auxiliary Information Sizes
+"saio"  # Sample Auxiliary Information Offsets
+"styp"  # Segment Type Box
+"emsg"  # Event Message Box
+
+# ── Encryption / DRM boxes ────────────────────────────────────────────────────
+"pssh"  # Protection System Specific Header
+"sinf"  # Protection Scheme Info
+"frma"  # Original Format Box
+"schm"  # Scheme Type Box
+"schi"  # Scheme Information Box
+"tenc"  # Track Encryption Box
+"senc"  # Sample Encryption Box
+"piff"  # Protected Interoperable File Format
+"enc1"  # Encrypted video sample entry
+
+# ── HEIF / AVIF / image-sequence boxes ───────────────────────────────────────
+"pitm"  # Primary Item Box
+"idat"  # Item Data Box
+"iref"  # Item Reference Box
+"iprp"  # Item Properties Box
+"ipco"  # Item Property Container Box
+"ipma"  # Item Property Association Box
+"ispe"  # Image Spatial Extents Property
+"pixi"  # Pixel Information Property
+"irot"  # Image Rotation Property
+"imir"  # Image Mirror Property
+"hvcC"  # HEVC Configuration Box (duplicate, for dict weight)
+"av1C"  # AV1 Codec Configuration Record
+"iinf"  # Item Information Box
+"infe"  # Item Info Entry
+"iloc"  # Item Location Box
+"grid"  # Derived Image Grid
+"iovl"  # Derived Image Overlay
+"ienc"  # Item Encryption Box
+"cdsc"  # Content Describe Reference
+"auxC"  # Auxiliary Type Property
+"udes"  # User Description Property
+
+# ── QuickTime / Apple-specific boxes ─────────────────────────────────────────
+"gmin"  # Base Media Info
+"text"  # Text Sample Entry
+"tx3g"  # Timed Text Sample Entry
+"ftab"  # Font Table
+"styl"  # Style Record
+"hlit"  # Highlight Record
+"hclr"  # Highlight Color Record
+"krok"  # Karaoke Record
+"href"  # Hypertext Link
+"tbox"  # Text Box
+"blnk"  # Blink
+"twrp"  # Text Wrap
+"tmcd"  # Timecode
+"tcmi"  # Timecode Media Information
+"c608"  # CEA-608 Closed Caption
+"c708"  # CEA-708 Closed Caption
+"wvtt"  # WebVTT Sample Entry
+"vttc"  # VTT Cue Box
+"vtte"  # VTT Empty Cue Box
+"payl"  # Cue Payload Box
+
+# ── Audio codec config boxes ──────────────────────────────────────────────────
+"esds"  # ElementaryStreamDescriptor (MP4A)
+"alac"  # Apple Lossless Audio Codec
+"fLaC"  # FLAC Configuration
+"Opus"  # Opus Configuration
+"dOps"  # Opus Specific Box
+"mp4a"  # MPEG-4 Audio
+"ac-3"  # AC-3 Audio
+"ec-3"  # E-AC-3 Audio
+"mlpa"  # Dolby TrueHD
+"dtsc"  # DTS Coherent Acoustics
+"dtsh"  # DTS-HD Audio
+"dtsl"  # DTS Express Low Bitrate
+"dtse"  # DTS Express
+
+# ── Video codec config boxes ──────────────────────────────────────────────────
+"avcC"  # AVC/H.264 Configuration (extra weight)
+"vpcC"  # VP8/VP9 Configuration
+"m4ds"  # MPEG-4 Descriptors
+"d263"  # H.263 decoder config
+"bitr"  # Bit Rate Box
+"btrt"  # Bit Rate Box (ISO)
+"m1v "  # MPEG-1 Video
+"m2v1"  # MPEG-2 Video
+"s263"  # Sorenson H.263
+"cvid"  # Cinepak
+
+# ── Metadata / XMP / iTunes extras ───────────────────────────────────────────
+"keys"  # Metadata Keys Container
+"uuid"  # UUID Box (extended type)
+"xml " # XML Box
+"bxml"  # Binary XML Box
+"cprt"  # Copyright Box
+"titl"  # Title Box
+"dscp"  # Description Box
+"perf"  # Performer Box
+"auth"  # Author Box
+"gnre"  # Genre Box
+"albm"  # Album Box
+"yrrc"  # Recording Year Box
+"rtng"  # Rating Box
+"clsf"  # Classification Box
+"kywd"  # Keyword Box
+"loci"  # Location Information Box
+"tsel"  # Track Selection Box
+"strk"  # Sub Track Box
+"stri"  # Sub Track Information Box
+"strd"  # Sub Track Definition Box
+"kind"  # Track Kind Box
+"nmdm"  # Non-Diegetic Media Box
+"3gp6"  # 3GPP 6 brand marker
+
+# ── Version/flags magic values ────────────────────────────────────────────────
+"\x01\x00\x00\x00"   # version=1 (large MVHD/TKHD)
+"\x02\x00\x00\x00"   # version=2 (rare)
+"\x00\x00\x00\x01"   # flags=1
+"\x00\x00\x00\x02"   # flags=2
+"\x00\x00\x00\x03"   # flags=3 (track_enabled|track_in_movie)
+"\x00\x00\x00\x0f"   # flags=0x0f (all 4 track flags set)
+"\x00\x00\x01\x00"   # flags=0x100
+"\x00\x01\x00\x00"   # flags=0x10000
+"\x00\x00\x07\xff"   # flags=0x7ff (many bits)
+"\xff\x00\x00\x00"   # version=255 (invalid, boundary test)
+
+# ── Common field sizes and offsets ────────────────────────────────────────────
+"\x00\x00\x00\x18"   # 24 bytes (small box)
+"\x00\x00\x00\x24"   # 36 bytes
+"\x00\x00\x00\x38"   # 56 bytes (MVHD v0 size)
+"\x00\x00\x00\x6c"   # 108 bytes (MVHD v1 size)
+"\x00\x00\x00\x5c"   # 92 bytes (TKHD v0 size)
+"\x00\x00\x00\x98"   # 152 bytes (TKHD v1 size)
+"\x00\x00\x00\x1c"   # 28 bytes (minimal STTS/CTTS)
+"\x00\x00\x00\x1a"   # 26 bytes (minimal MDHD v0)
+"\x00\x00\x00\x2a"   # 42 bytes (minimal MDHD v1)
+
+# ── Fixed-point and time values ───────────────────────────────────────────────
+"\x00\x01\x00\x00"   # 1.0 in 16.16 fixed-point (width/height matrix)
+"\x00\x04\x00\x00"   # 4.0 in 16.16
+"\x40\x00\x00\x00"   # 1.0 in 2.30 fixed-point (volume=1.0)
+"\x00\x01\x5f\x90"   # 90000 (common video timescale)
+"\x00\x00\xac\x44"   # 44100 (audio sample rate)
+"\x00\x00\xbb\x80"   # 48000 (audio sample rate)
+"\x00\x01\xd4\xc0"   # 120000 (timescale)
+"\x00\x00\x03\xe8"   # 1000 (ms timescale)
+
+# ── ESDS descriptor tags ──────────────────────────────────────────────────────
+"\x03"               # ES_Descriptor tag
+"\x04"               # DecoderConfigDescriptor tag
+"\x05"               # DecoderSpecificInfo tag
+"\x06"               # SLConfigDescriptor tag
+"\x0f"               # ObjectTypeIndication: Video ISO/IEC 14496-2
+"\x20"               # ObjectTypeIndication: Video ISO/IEC 14496-2 (AAC)
+"\x40"               # ObjectTypeIndication: Audio ISO/IEC 14496-3 (AAC)
+"\x6b"               # ObjectTypeIndication: Audio ISO/IEC 11172-3 (MP3)
+"\x69"               # ObjectTypeIndication: Audio ISO/IEC 13818-7 (AAC)
+"\x80\x80\x80"       # 3-byte expandable size (common ESDS pattern)
+
+# ── UUID values (extended box types) ─────────────────────────────────────────
+"\xa2\x39\x4f\x52\x5a\x9b\x4f\x14\xa2\x44\x6c\x42\x7c\x64\x8d\xf4"  # PIFF
+"\xd4\x80\x7e\xf2\xca\x39\x46\x95\x8e\x54\x26\xcb\x9e\x46\xa7\x9f"  # PIFF protection
+"\xa2\x38\x47\x2e\x14\xfe\x11\xb7\xa1\xe6\xdc\x27\xb4\x35\x70\x11"  # DASH AdaptationSet
+"\x6d\x1d\x9b\x05\x42\xd5\x44\xe6\x80\xe2\x14\x1d\xaf\xf7\x57\xb2"  # Microsoft PIFF TFXd
