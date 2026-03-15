@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  dashboard:
+    environment:
+      - DB_PATH=/results/fuzzer.db
+      - RESULTS_DIR=/results
+      - DASHBOARD_PASSWORD=helloworld
+      - MACHINE_NAME=local
+      - REMOTE_MACHINES=powerhorse:http://16.16.169.131:56789:helloworld
+    healthcheck:
+      test: ["CMD","curl","-fs","http://localhost:56789/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
