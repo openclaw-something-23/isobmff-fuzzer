@@ -381,12 +381,73 @@ async def live_stats(request: Request):
     data["stale"] = age > 60
     data["running"] = True
     data["machine_name"] = _MACHINE_NAME
-    # ensure keys expected by machines panel
+    # count actual AFL instances from afl_out dir (more reliable than N_CORES env)
+    try:
+        afl_out = os.path.join(RESULTS_DIR, "afl_out")
+        run_id  = data.get("run_id", "")
+        if run_id:
+            run_path = os.path.join(afl_out, run_id)
+            if os.path.isdir(run_path):
+                n_inst = len([d for d in os.listdir(run_path)
+                              if os.path.isdir(os.path.join(run_path, d))])
+                if n_inst > 0:
+                    data["instances"] = n_inst
+    except Exception:
+        pass
     data.setdefault("instances", data.get("afl_instances", 1))
     data.setdefault("edges_found", data.get("map_size", 0))
     data.setdefault("corpus_count", data.get("corpus_count", 0))
     data.setdefault("crashes_found", data.get("unique_crashes", 0))
+    data.setdefault("pending_favs", 0)
     return data
+
+
+@app.get("/api/instances")
+async def afl_instances(request: Request):
+    """Per-AFL-instance stats for the current (or latest) run."""
+    check_auth(request)
+    afl_out = os.path.join(RESULTS_DIR, "afl_out")
+    if not os.path.isdir(afl_out):
+        return []
+    runs = sorted(os.listdir(afl_out), reverse=True)
+    if not runs:
+        return []
+    run_id   = runs[0]
+    run_path = os.path.join(afl_out, run_id)
+    result   = []
+    now      = time.time()
+    for inst in sorted(os.listdir(run_path)):
+        inst_path  = os.path.join(run_path, inst)
+        stats_file = os.path.join(inst_path, "fuzzer_stats")
+        if not os.path.isfile(stats_file):
+            continue
+        kv: dict = {}
+        try:
+            with open(stats_file) as f:
+                for line in f:
+                    if ":" in line:
+                        k, _, v = line.partition(":")
+                        kv[k.strip()] = v.strip()
+        except Exception:
+            continue
+        last_upd = int(kv.get("last_update", 0))
+        alive    = (now - last_upd) < 120 if last_upd else False
+        result.append({
+            "run_id":        run_id,
+            "instance":      inst,
+            "role":          "main" if inst == "main" else "secondary",
+            "alive":         alive,
+            "execs_done":    int(kv.get("execs_done", 0)),
+            "execs_per_sec": float(kv.get("execs_per_sec", 0)),
+            "edges_found":   int(kv.get("edges_found", 0)),
+            "corpus_count":  int(kv.get("corpus_count", 0)),
+            "pending_favs":  int(kv.get("pending_favs", 0)),
+            "saved_crashes": int(kv.get("saved_crashes", 0)),
+            "cycles_done":   int(kv.get("cycles_done", 0)),
+            "cur_item":      int(kv.get("cur_item", 0)),
+            "last_update":   last_upd,
+        })
+    return result
 
 
 @app.get("/api/mp4gen")

@@ -422,6 +422,39 @@
       </div>
     </div>
 
+  <!-- ── Workers panel ───────────────────────────────────────────────────── -->
+  <main style="padding-top:0">
+    <div class="panel" id="workers-panel" style="margin-bottom:1.2rem">
+      <div class="panel-header">
+        <span class="ph-icon">⚙️</span> AFL Workers (current run)
+        <span class="ph-sub" id="workers-run-id">–</span>
+      </div>
+      <div class="panel-body" style="padding:12px">
+        <div style="overflow-x:auto">
+          <table id="workers-table">
+            <thead>
+              <tr>
+                <th>Instance</th>
+                <th>Role</th>
+                <th>Edges</th>
+                <th>Corpus</th>
+                <th>Pending</th>
+                <th>Execs/s</th>
+                <th>Total Execs</th>
+                <th>Crashes</th>
+                <th>Cycles</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="workers-tbody">
+              <tr><td colspan="10" class="empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
   <!-- ── Machines panel ──────────────────────────────────────────────────── -->
   <main style="padding-top:0">
     <div class="panel" id="machines-panel" style="margin-bottom:1.2rem">
@@ -633,9 +666,28 @@ async function loadTimeline() {
 }
 
 async function loadRuns() {
-  const d = await fetch('/api/runs?limit=100&sort=started_at', { credentials: 'include' }).then(r => r.json()).catch(() => ({ runs: [] }));
-  const runs = (d.runs || []).slice().reverse(); // most recent first
+  const d    = await fetch('/api/runs?limit=100&sort=started_at', { credentials: 'include' }).then(r => r.json()).catch(() => ({ runs: [] }));
+  const live = await fetch('/api/live',  { credentials: 'include' }).then(r => r.json()).catch(() => null);
   const tbody = document.getElementById('runs-tbody');
+
+  let runs = (d.runs || []).slice().reverse(); // most recent first
+
+  // Inject the currently-running campaign at the top (if not already in DB)
+  if (live && live.running && live.run_id && !runs.find(r => r.run_id === live.run_id)) {
+    runs.unshift({
+      run_id: live.run_id,
+      status: 'running',
+      started_at: null,
+      duration_sec: live.elapsed_sec || 0,
+      crashes: live.saved_crashes || 0,
+      cov_edges: live.edges_found || 0,
+      cov_lines_pct: live.bitmap_cvg || 0,
+      corpus_found: live.corpus_found || 0,
+      execs_per_sec: live.execs_per_sec || 0,
+      score: null,
+      _live: true,
+    });
+  }
 
   if (!runs.length) {
     tbody.innerHTML = '<tr><td colspan="9" class="empty">No completed runs yet</td></tr>';
@@ -648,8 +700,12 @@ async function loadRuns() {
     const dur = r.duration_sec ? (r.duration_sec >= 60 ? `${Math.floor(r.duration_sec/60)}m${r.duration_sec%60}s` : `${r.duration_sec}s`) : '–';
     const statusColor = r.status === 'done' ? 'var(--green)' : r.status === 'running' ? 'var(--orange)' : 'var(--muted)';
     const barW = Math.round((r.score||0)/maxScore*100);
-    return `<tr>
-      <td class="mono" style="font-size:0.72rem">${r.run_id}</td>
+    const rowBg = r._live ? 'background:rgba(255,165,0,.06)' : '';
+    const liveTag = r._live ? ' <span style="font-size:.6rem;background:var(--orange);color:#000;padding:1px 4px;border-radius:3px;vertical-align:middle">LIVE</span>' : '';
+    // hide interrupted+0-edge rows (failed runs) - still show if edges > 0
+    if (r.status === 'interrupted' && !r.cov_edges) return '';
+    return `<tr style="${rowBg}">
+      <td class="mono" style="font-size:0.72rem">${r.run_id}${liveTag}</td>
       <td style="color:var(--green);font-weight:600">${(r.cov_edges||0).toLocaleString()}</td>
       <td style="color:var(--cyan)">${(r.cov_lines_pct||0).toFixed(1)}%</td>
       <td style="color:var(--purple)">${r.corpus_found > 0 ? '+' + r.corpus_found : '–'}</td>
@@ -657,8 +713,10 @@ async function loadRuns() {
       <td style="color:var(--orange)">${(r.execs_per_sec||0).toLocaleString()}</td>
       <td style="color:var(--muted)">${dur}</td>
       <td>
-        <div style="color:var(--purple);font-size:0.75rem;font-weight:600">${(r.score||0).toLocaleString()}</div>
-        <div class="score-bar"><div class="score-bar-fill" style="width:${barW}%"></div></div>
+        ${r.score != null
+          ? `<div style="color:var(--purple);font-size:0.75rem;font-weight:600">${(r.score||0).toLocaleString()}</div>
+             <div class="score-bar"><div class="score-bar-fill" style="width:${barW}%"></div></div>`
+          : `<span style="color:var(--muted);font-size:.7rem">–</span>`}
       </td>
       <td><span style="color:${statusColor};font-size:0.72rem">${r.status}</span></td>
     </tr>`;
@@ -777,6 +835,39 @@ setInterval(loadMp4gen, 10000);
 loadMp4gen();
 
 /* ── Machines panel ───────────────────────────────────────────────────── */
+async function loadWorkers() {
+  try {
+    const workers = await fetch('/api/instances', { credentials: 'include' }).then(r => r.json()).catch(() => []);
+    const tbody   = document.getElementById('workers-tbody');
+    if (!tbody) return;
+    if (!workers.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">No AFL instances found</td></tr>';
+      return;
+    }
+    const runId = document.getElementById('workers-run-id');
+    if (runId && workers[0]) runId.textContent = workers[0].run_id || '–';
+    const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n||0);
+    tbody.innerHTML = workers.map(w => {
+      const dot   = w.alive ? '<span style="color:var(--green)">●</span>' : '<span style="color:var(--muted)">○</span>';
+      const role  = w.role === 'main'
+        ? '<span style="color:var(--orange);font-size:.7rem">MAIN</span>'
+        : '<span style="color:var(--muted);font-size:.7rem">sec</span>';
+      return `<tr>
+        <td class="mono" style="font-weight:600">${w.instance}</td>
+        <td>${role}</td>
+        <td style="color:var(--green)">${(w.edges_found||0).toLocaleString()}</td>
+        <td style="color:var(--cyan)">${(w.corpus_count||0).toLocaleString()}</td>
+        <td style="color:var(--purple)">${(w.pending_favs||0).toLocaleString()}</td>
+        <td style="color:var(--orange)">${(w.execs_per_sec||0).toFixed(1)}</td>
+        <td style="color:var(--muted)">${fmt(w.execs_done)}</td>
+        <td style="color:${w.saved_crashes>0?'var(--red)':'var(--fg)'}">${w.saved_crashes||'–'}</td>
+        <td style="color:var(--muted)">${w.cycles_done||0}</td>
+        <td>${dot} ${w.alive ? '<span style="color:var(--green);font-size:.7rem">running</span>' : '<span style="color:var(--muted);font-size:.7rem">idle</span>'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.warn('workers:', e); }
+}
+
 async function loadMachines() {
   try {
     const r = await fetch('/api/machines', { credentials: 'include' });
@@ -855,6 +946,8 @@ async function loadMachines() {
 
 setInterval(loadMachines, 15000);
 loadMachines();
+setInterval(loadWorkers, 8000);
+loadWorkers();
 </script>
 </body>
 </html>
