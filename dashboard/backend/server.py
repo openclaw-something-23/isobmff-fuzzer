@@ -517,6 +517,11 @@ async def list_machines(request: Request):
             live = json.loads(stats_path.read_text()) if stats_path.exists() else {}
         except Exception:
             live = {}
+        # Normalize same as /api/live
+        live.setdefault("instances", live.get("afl_instances", 1))
+        live.setdefault("edges_found", live.get("map_size", 0))
+        live.setdefault("crashes_found", live.get("saved_crashes", 0))
+        live.setdefault("pending_favs", 0)
         try:
             mp4_path = Path(RESULTS_DIR) / "mp4gen_stats.json"
             mp4 = json.loads(mp4_path.read_text()) if mp4_path.exists() else {}

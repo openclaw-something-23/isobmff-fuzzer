@@ -172,7 +172,7 @@ STATS_FILE="${MAIN_DIR}/fuzzer_stats"
     while kill -0 $MAIN_PID 2>/dev/null; do
         sleep 15
         if [ -f "${STATS_FILE}" ]; then
-            python3 - "${STATS_FILE}" "${RUN_ID}" "${START_TS}" <<'PYEOF'
+            python3 - "${STATS_FILE}" "${RUN_ID}" "${START_TS}" "${N_CORES}" <<'PYEOF'
 import sys, json, time, re
 
 stats_file, run_id, start_ts = sys.argv[1], sys.argv[2], int(sys.argv[3])
@@ -198,6 +198,8 @@ live = {
     "saved_crashes": int(s.get("saved_crashes", 0)),
     "cycles_done":   int(s.get("cycles_done", 0)),
     "execs_done":    int(s.get("execs_done", 0)),
+    "pending_favs":  int(s.get("pending_favs", 0)),
+    "instances":     int(sys.argv[4]) if len(sys.argv) > 4 else 1,
     "updated_at":    int(time.time()),
 }
 json.dump(live, open("/results/live_stats.json", "w"), indent=2)
