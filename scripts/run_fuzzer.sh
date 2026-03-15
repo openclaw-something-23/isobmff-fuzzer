@@ -21,7 +21,8 @@ DICT="${RESULTS}/isobmff.dict"
 DASHBOARD_API="${DASHBOARD_API:-http://localhost:56789}"
 MAX_TOTAL_TIME="${MAX_TOTAL_TIME:-3600}"
 TIMEOUT_MS="${AFL_TIMEOUT:-5000}"
-AFL_CORES="${AFL_CORES:-1}"
+N_CORES="${AFL_CORES:-1}"
+unset AFL_CORES
 
 # Improvement 8: Extended power schedule rotation including COE and LIN
 SCHEDULES=("fast" "explore" "exploit" "mmopt" "rare" "coe" "lin" "quad")
@@ -41,7 +42,7 @@ AFL_OUT="${RESULTS}/afl_out/${RUN_ID}"
 MAIN_DIR="${AFL_OUT}/main"
 mkdir -p "${RUN_DIR}" "${AFL_OUT}"
 
-echo "[+] Run ${RUN_ID} starting (max=${MAX_TOTAL_TIME}s cores=${AFL_CORES} timeout=${TIMEOUT_MS}ms schedule=${POWER_SCHEDULE})"
+echo "[+] Run ${RUN_ID} starting (max=${MAX_TOTAL_TIME}s cores=${N_CORES} timeout=${TIMEOUT_MS}ms schedule=${POWER_SCHEDULE})"
 START_TS=$(date +%s)
 
 curl -sf -X POST "${DASHBOARD_API}/api/runs" \
@@ -143,9 +144,9 @@ MAIN_PID=$!
 echo "[*] Main instance PID=${MAIN_PID}"
 
 # Give main 10s to complete dry-run and create the queue before secondaries join
-if [ "${AFL_CORES}" -gt 1 ]; then
+if [ "${N_CORES}" -gt 1 ]; then
     sleep 10
-    for i in $(seq 1 $(( AFL_CORES - 1 ))); do
+    for i in $(seq 1 $(( N_CORES - 1 ))); do
         AFL_IGNORE_SEED_PROBLEMS=1 \
         ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
         UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \

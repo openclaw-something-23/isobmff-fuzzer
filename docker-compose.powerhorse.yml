@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  dashboard:
+    ports:
+      - "56789:56789"
+    volumes:
+      - ./results:/results
+    environment:
+      - DB_PATH=/results/fuzzer.db
+      - RESULTS_DIR=/results
+      - DASHBOARD_PASSWORD=helloworld
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:56789/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  fuzzer:
+    volumes:
+      - ./results:/results
+      - ./fuzzer/corpus:/fuzzer/corpus
+      - ./scripts:/host-scripts:ro
+    environment:
+      - DASHBOARD_API=http://dashboard:56789
+      - MAX_TOTAL_TIME=3600
+      - MAX_LEN=65536
+      - AFL_CORES=28
+      - AFL_NO_AFFINITY=1
+      - AFL_SKIP_CPUFREQ=1
+      - AFL_AUTORESUME=1
+      - ASAN_OPTIONS=halt_on_error=0:abort_on_error=0:detect_leaks=0:allocator_may_return_null=1
+      - UBSAN_OPTIONS=halt_on_error=0:print_stacktrace=1
+    entrypoint: |
+      /bin/bash -c "
+        echo core > /proc/sys/kernel/core_pattern 2>/dev/null || true
+        echo 0    > /proc/sys/kernel/randomize_va_space 2>/dev/null || true
+        python3 /host-scripts/gen_structured_seeds.py /results/seeds_ok 2>/dev/null || true
+        bash /host-scripts/generate_corpus.sh > /results/mp4gen.log 2>&1 &
+        while true; do
+          bash /host-scripts/run_fuzzer.sh
+          echo '[*] Run complete. Sleeping 5s...'
+          sleep 5
+        done
+      "
