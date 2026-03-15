@@ -277,6 +277,56 @@
       </div>
     </div>
 
+    <!-- ── mp4gen Stats Panel ────────────────────────────────────────────── -->
+    <div class="panel" id="mp4gen-panel" style="margin-bottom:1.2rem">
+      <div class="panel-header">
+        <span class="ph-icon">🎬</span> MP4 Corpus Generator (mp4gen)
+        <span class="ph-sub" id="mp4gen-status">loading…</span>
+      </div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;padding:0.5rem 0.2rem 0.2rem">
+        <!-- stat boxes -->
+        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
+          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">GENERATED</div>
+          <div id="mp4gen-generated" style="font-size:1.6rem;font-weight:700;color:var(--cyan)">–</div>
+          <div style="font-size:0.65rem;color:var(--fg2)">total MP4 files</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
+          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">SURVIVED CMIN</div>
+          <div id="mp4gen-cmin" style="font-size:1.6rem;font-weight:700;color:var(--orange)">–</div>
+          <div id="mp4gen-cmin-pct" style="font-size:0.65rem;color:var(--fg2)">unique coverage</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
+          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">CONTRIBUTED</div>
+          <div id="mp4gen-contributed" style="font-size:1.6rem;font-weight:700;color:var(--green)">–</div>
+          <div id="mp4gen-contributed-pct" style="font-size:0.65rem;color:var(--fg2)">new edges vs corpus</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
+          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">BATCHES</div>
+          <div id="mp4gen-batches" style="font-size:1.6rem;font-weight:700;color:var(--purple)">–</div>
+          <div id="mp4gen-last-batch" style="font-size:0.65rem;color:var(--fg2)">completed</div>
+        </div>
+      </div>
+      <!-- Progress bars -->
+      <div style="padding:0.4rem 0.2rem 0.6rem;display:flex;flex-direction:column;gap:6px">
+        <div>
+          <div style="font-size:0.65rem;color:var(--fg2);margin-bottom:2px">cmin survival rate</div>
+          <div style="background:var(--bg2);border-radius:3px;height:8px;overflow:hidden">
+            <div id="bar-cmin" style="height:100%;background:var(--orange);width:0%;transition:width 0.5s"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem;color:var(--fg2);margin-bottom:2px">contribution rate (new coverage vs cmin)</div>
+          <div style="background:var(--bg2);border-radius:3px;height:8px;overflow:hidden">
+            <div id="bar-contributed" style="height:100%;background:var(--green);width:0%;transition:width 0.5s"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Live progress line -->
+      <div id="mp4gen-live" style="font-size:0.7rem;color:var(--fg2);padding:0.2rem 0.2rem 0;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <!-- Batch history mini-table -->
+      <div id="mp4gen-history" style="font-size:0.72rem;color:var(--fg2);padding:0.3rem 0.2rem 0.2rem"></div>
+    </div>
+
     <!-- ── Charts row ────────────────────────────────────────────────────── -->
     <div class="two-col">
       <div class="panel">
@@ -641,9 +691,74 @@ async function doRescan() {
   setTimeout(refresh, 2000);
 }
 
+// ── MP4gen stats ─────────────────────────────────────────────────────────────
+async function loadMp4gen() {
+  try {
+    const r = await fetch('/api/mp4gen');
+    if (!r.ok) return;
+    const d = await r.json();
+
+    const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+
+    set('mp4gen-generated',  fmt(d.total_generated || 0));
+    set('mp4gen-cmin',       fmt(d.total_cmin || 0));
+    set('mp4gen-cmin-pct',   (d.pct_cmin||0).toFixed(1)+'% survived cmin');
+    set('mp4gen-contributed',fmt(d.total_contributed || 0));
+    set('mp4gen-contributed-pct', (d.total_cmin > 0
+      ? (100*d.total_contributed/d.total_cmin).toFixed(1)
+      : '0.0') + '% of cmin added new edges');
+    set('mp4gen-batches', d.batch_count || 0);
+    set('mp4gen-last-batch', d.last_batch_at
+      ? 'last: '+d.last_batch_at.replace('T',' ')
+      : 'no batches yet');
+
+    const statusEl = document.getElementById('mp4gen-status');
+    if (statusEl) {
+      if (d.running && d.batch_count === 0)
+        statusEl.textContent = '● generating batch #1…';
+      else if (d.running)
+        statusEl.textContent = '● running (batch #' + (d.batch_count+1) + ')';
+      else
+        statusEl.textContent = d.batch_count > 0 ? '○ idle — ' + d.batch_count + ' batches done' : '○ idle';
+      statusEl.style.color = d.running ? 'var(--green)' : 'var(--fg2)';
+    }
+
+    // Live log line
+    const liveEl = document.getElementById('mp4gen-live');
+    if (liveEl && d.last_log_line)
+      liveEl.textContent = '▸ ' + d.last_log_line;
+
+    // Progress bars
+    const barCmin = document.getElementById('bar-cmin');
+    if (barCmin) barCmin.style.width = Math.min(d.pct_cmin||0, 100)+'%';
+    const barCont = document.getElementById('bar-contributed');
+    if (barCont && d.total_cmin > 0)
+      barCont.style.width = Math.min(100*d.total_contributed/d.total_cmin, 100)+'%';
+
+    // Batch history (last 5)
+    const histEl = document.getElementById('mp4gen-history');
+    if (histEl && d.batches && d.batches.length > 0) {
+      const recent = [...d.batches].reverse().slice(0, 5);
+      histEl.innerHTML = '<div style="margin-bottom:4px;font-weight:600">Recent batches:</div>'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '<tr style="color:var(--fg2)"><td>Batch</td><td>Generated</td><td>→ cmin</td><td>→ Contributed</td><td>Time</td></tr>'
+        + recent.map(b => `<tr>
+            <td>#${b.batch}</td>
+            <td>${fmt(b.generated)}</td>
+            <td>${fmt(b.cmin)} (${b.generated>0?(100*b.cmin/b.generated).toFixed(1):0}%)</td>
+            <td style="color:var(--green)">${fmt(b.contributed)} (${b.cmin>0?(100*b.contributed/b.cmin).toFixed(1):0}%)</td>
+            <td>${b.time_sec}s</td>
+          </tr>`).join('')
+        + '</table>';
+    }
+  } catch(e) {}
+}
+
 // ── Timers ────────────────────────────────────────────────────────────────────
 setInterval(loadLive, 5000);
 setInterval(refresh, 15000);
+setInterval(loadMp4gen, 10000);
+loadMp4gen();
 </script>
 </body>
 </html>

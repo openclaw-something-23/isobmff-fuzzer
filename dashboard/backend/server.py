@@ -316,6 +316,62 @@ async def live_stats(request: Request):
     return data
 
 
+@app.get("/api/mp4gen")
+async def mp4gen_stats(request: Request):
+    """Stats from the parallel mp4gen corpus generator."""
+    check_auth(request)
+    log_file   = os.path.join(RESULTS_DIR, "mp4gen.log")
+    stats_file = os.path.join(RESULTS_DIR, "mp4gen_stats.json")
+
+    # running = log file exists AND modified within last 90 seconds
+    running = False
+    last_log_line = ""
+    if os.path.isfile(log_file):
+        age = time.time() - os.path.getmtime(log_file)
+        running = age < 90
+        try:
+            # grab last meaningful line for in-progress display
+            with open(log_file, "rb") as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - 2048))
+                tail = f.read().decode("utf-8", errors="replace")
+            lines = [l.strip() for l in tail.splitlines()
+                     if l.strip()
+                     and "\x1b" not in l
+                     and "x264 [" not in l
+                     and "WARNING:" not in l
+                     and "Did you mean" not in l]
+            last_log_line = lines[-1] if lines else ""
+        except Exception:
+            pass
+
+    # Load stats (may not exist yet if no batch has completed)
+    data: dict = {
+        "total_generated": 0, "total_cmin": 0, "total_contributed": 0,
+        "batch_count": 0, "last_batch_at": None, "batches": [],
+    }
+    if os.path.isfile(stats_file):
+        try:
+            with open(stats_file) as f:
+                data = json.load(f)
+        except Exception:
+            pass
+
+    data["running"] = running
+    data["last_log_line"] = last_log_line
+    data["pct_cmin"] = round(
+        100.0 * data["total_cmin"] / max(data["total_generated"], 1), 2
+    )
+    data["pct_contributed"] = round(
+        100.0 * data["total_contributed"] / max(data["total_generated"], 1), 2
+    )
+    data["pct_contributed_of_cmin"] = round(
+        100.0 * data["total_contributed"] / max(data["total_cmin"], 1), 2
+    )
+    return data
+
+
 @app.get("/api/coverage/timeline")
 async def coverage_timeline(request: Request, limit: int = 200):
     check_auth(request)
