@@ -578,7 +578,17 @@ async def list_machines(request: Request):
             live = json.loads(stats_path.read_text()) if stats_path.exists() else {}
         except Exception:
             live = {}
-        # Normalize same as /api/live
+        # Normalize same as /api/live — count actual AFL instances from afl_out
+        try:
+            run_id = live.get("run_id", "")
+            if run_id:
+                rp = Path(RESULTS_DIR) / "afl_out" / run_id
+                if rp.is_dir():
+                    n = len([d for d in rp.iterdir() if d.is_dir()])
+                    if n > 0:
+                        live["instances"] = n
+        except Exception:
+            pass
         live.setdefault("instances", live.get("afl_instances", 1))
         live.setdefault("edges_found", live.get("map_size", 0))
         live.setdefault("crashes_found", live.get("saved_crashes", 0))
