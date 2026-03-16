@@ -1,4 +1,11 @@
 version: "3.9"
+# ─── POWERHORSE WORKER ───────────────────────────────────────────────────────
+# Run this on 16.16.169.131 (powerhorse, 28 cores).
+# Connects to the controller for corpus sync.
+#
+# Usage on powerhorse:
+#   CONTROLLER_URL=http://<controller_ip>:56789 \
+#   docker-compose -f docker-compose.powerhorse.yml up --build
 
 services:
   dashboard:
@@ -6,11 +13,14 @@ services:
       - "56789:56789"
     volumes:
       - ./results:/results
+      - ./dashboard/static:/dashboard/static
     environment:
       - DB_PATH=/results/fuzzer.db
       - RESULTS_DIR=/results
+      - AFL_SYNC_DIR=/results/afl_sync
       - DASHBOARD_PASSWORD=helloworld
       - MACHINE_NAME=powerhorse
+      - REMOTE_MACHINES=      # workers don't aggregate others
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:56789/"]
       interval: 15s
@@ -21,26 +31,29 @@ services:
     volumes:
       - ./results:/results
       - ./fuzzer/corpus:/fuzzer/corpus
-      - ./scripts:/host-scripts:ro
+      - ./scripts:/scripts:ro
     environment:
       - DASHBOARD_API=http://dashboard:56789
-      - MAX_TOTAL_TIME=3600
-      - MAX_LEN=65536
+      - AFL_SYNC_DIR=/results/afl_sync
+      - CONTROLLER_URL=${CONTROLLER_URL}      # set via env: controller's :56789
+      - WORKER_NAME=ph                        # unique prefix for worker instances
+      - MAX_TOTAL_TIME=0                      # run forever
       - AFL_CORES=28
       - AFL_NO_AFFINITY=1
       - AFL_SKIP_CPUFREQ=1
       - AFL_AUTORESUME=1
+      - AFL_IMPORT_FIRST=1
+      - SYNC_INTERVAL=30
+      - DASHBOARD_PASSWORD=helloworld
       - ASAN_OPTIONS=halt_on_error=0:abort_on_error=0:detect_leaks=0:allocator_may_return_null=1
       - UBSAN_OPTIONS=halt_on_error=0:print_stacktrace=1
     entrypoint: |
       /bin/bash -c "
         echo core > /proc/sys/kernel/core_pattern 2>/dev/null || true
         echo 0    > /proc/sys/kernel/randomize_va_space 2>/dev/null || true
-        python3 /host-scripts/gen_structured_seeds.py /results/seeds_ok 2>/dev/null || true
-        bash /host-scripts/generate_corpus.sh > /results/mp4gen.log 2>&1 &
         while true; do
-          bash /host-scripts/run_fuzzer.sh
-          echo '[*] Run complete. Sleeping 5s...'
+          /scripts/run_worker.sh
+          echo '[*] Worker run complete. Sleeping 5s...'
           sleep 5
         done
       "

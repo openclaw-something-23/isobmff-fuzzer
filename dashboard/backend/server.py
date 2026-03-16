@@ -2,7 +2,7 @@
 ISOBMFF Fuzzer Dashboard — FastAPI Backend
 Port: 56789
 """
-import os, time, subprocess, json, asyncio
+import os, time, subprocess, json, asyncio, hashlib, threading
 from typing import Optional
 from pathlib import Path
 import httpx
@@ -24,6 +24,14 @@ DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "helloworld")
 SECRET_KEY         = os.environ.get("SECRET_KEY", "fuzzer-secret-key-change-me")
 SESSION_MAX_AGE    = 60 * 60 * 24 * 7
 COOKIE_NAME        = "fuzz_session"
+
+# ── Distributed sync config ───────────────────────────────────────────────────
+# Stable AFL++ sync directory (persistent across runs)
+AFL_SYNC_DIR       = Path(os.environ.get("AFL_SYNC_DIR", os.path.join(RESULTS_DIR, "afl_sync")))
+MAX_SYNC_FILE_BYTES= int(os.environ.get("MAX_SYNC_FILE_BYTES", str(65536)))
+# In-memory worker registry: {worker_name: {last_ping, instances, ...}}
+_worker_registry: dict = {}
+_worker_registry_lock = threading.Lock()
 
 # ── Remote machines ───────────────────────────────────────────────────────────
 # Format: "label:url:password,label2:url2:password2"
@@ -202,32 +210,47 @@ async def get_stats(request: Request):
                 seed_count = len(files)
             break
 
-    # 2. AFL++ queue count (from most recent completed run)
+    # 2. AFL++ queue count — prefer stable afl_sync/main/queue (distributed mode)
     afl_queue_count = 0
-    afl_out_dir = os.path.join(RESULTS_DIR, "afl_out")
-    if os.path.isdir(afl_out_dir):
-        for run_dir in sorted(os.listdir(afl_out_dir), reverse=True)[:5]:
-            queue_dir = os.path.join(afl_out_dir, run_dir, "main", "queue")
-            if os.path.isdir(queue_dir):
-                afl_queue_count = sum(1 for f in os.listdir(queue_dir) if not f.startswith('.'))
-                break
+    sync_main_q = AFL_SYNC_DIR / "main" / "queue"
+    if sync_main_q.is_dir():
+        afl_queue_count = sum(1 for f in sync_main_q.iterdir() if not f.name.startswith('.'))
+    else:
+        afl_out_dir = os.path.join(RESULTS_DIR, "afl_out")
+        if os.path.isdir(afl_out_dir):
+            for run_dir in sorted(os.listdir(afl_out_dir), reverse=True)[:5]:
+                queue_dir = os.path.join(afl_out_dir, run_dir, "main", "queue")
+                if os.path.isdir(queue_dir):
+                    afl_queue_count = sum(1 for f in os.listdir(queue_dir) if not f.startswith('.'))
+                    break
 
-    # 3. Latest fuzzer_stats corpus_count (live, from active run)
+    # 3. Latest fuzzer_stats corpus_count — prefer afl_sync/main/fuzzer_stats
     live_corpus = 0
-    if os.path.isdir(afl_out_dir):
-        for run_dir in sorted(os.listdir(afl_out_dir), reverse=True)[:3]:
-            stats_file = os.path.join(afl_out_dir, run_dir, "main", "fuzzer_stats")
-            if os.path.isfile(stats_file):
-                try:
-                    with open(stats_file) as f:
-                        for line in f:
-                            if line.startswith("corpus_count"):
-                                live_corpus = int(line.split(":")[1].strip())
-                                break
-                    if live_corpus:
-                        break
-                except Exception:
-                    pass
+    sync_stats = AFL_SYNC_DIR / "main" / "fuzzer_stats"
+    if sync_stats.is_file():
+        try:
+            for line in sync_stats.read_text().splitlines():
+                if line.startswith("corpus_count"):
+                    live_corpus = int(line.split(":")[1].strip())
+                    break
+        except Exception:
+            pass
+    else:
+        afl_out_dir = os.path.join(RESULTS_DIR, "afl_out")
+        if os.path.isdir(afl_out_dir):
+            for run_dir in sorted(os.listdir(afl_out_dir), reverse=True)[:3]:
+                stats_file = os.path.join(afl_out_dir, run_dir, "main", "fuzzer_stats")
+                if os.path.isfile(stats_file):
+                    try:
+                        with open(stats_file) as f:
+                            for line in f:
+                                if line.startswith("corpus_count"):
+                                    live_corpus = int(line.split(":")[1].strip())
+                                    break
+                        if live_corpus:
+                            break
+                    except Exception:
+                        pass
 
     # Best corpus count: live > queue > seeds
     corpus_total = live_corpus or afl_queue_count or seed_count
@@ -404,38 +427,44 @@ async def live_stats(request: Request):
 
 @app.get("/api/instances")
 async def afl_instances(request: Request):
-    """Per-AFL-instance stats for the current (or latest) run."""
+    """Per-AFL-instance stats from the distributed afl_sync/ directory.
+
+    Includes local instances (main, s1, s2...) and remote worker instances
+    (worker_ph_1, worker_ph_2...) that have been synced in.
+    Falls back to latest per-run afl_out/ dir if afl_sync/ doesn't exist yet.
+    """
     check_auth(request)
-    afl_out = os.path.join(RESULTS_DIR, "afl_out")
-    if not os.path.isdir(afl_out):
-        return []
-    runs = sorted(os.listdir(afl_out), reverse=True)
-    if not runs:
-        return []
-    run_id   = runs[0]
-    run_path = os.path.join(afl_out, run_id)
-    result   = []
-    now      = time.time()
-    for inst in sorted(os.listdir(run_path)):
-        inst_path  = os.path.join(run_path, inst)
-        stats_file = os.path.join(inst_path, "fuzzer_stats")
-        if not os.path.isfile(stats_file):
-            continue
+    now = time.time()
+    result = []
+
+    def _read_inst(inst_path: Path, run_id: str = "live") -> Optional[dict]:
+        stats_file = inst_path / "fuzzer_stats"
+        if not stats_file.is_file():
+            return None
         kv: dict = {}
         try:
-            with open(stats_file) as f:
-                for line in f:
-                    if ":" in line:
-                        k, _, v = line.partition(":")
-                        kv[k.strip()] = v.strip()
+            for line in stats_file.read_text().splitlines():
+                if ":" in line:
+                    k, _, v = line.partition(":")
+                    kv[k.strip()] = v.strip()
         except Exception:
-            continue
+            return None
+        name     = inst_path.name
         last_upd = int(kv.get("last_update", 0))
         alive    = (now - last_upd) < 120 if last_upd else False
-        result.append({
+        # Determine role
+        if name == "main":
+            role = "main"
+        elif name.startswith("s") and name[1:].isdigit():
+            role = "secondary"
+        elif name.startswith("worker_"):
+            role = "worker"
+        else:
+            role = "secondary"
+        return {
             "run_id":        run_id,
-            "instance":      inst,
-            "role":          "main" if inst == "main" else "secondary",
+            "instance":      name,
+            "role":          role,
             "alive":         alive,
             "execs_done":    int(kv.get("execs_done", 0)),
             "execs_per_sec": float(kv.get("execs_per_sec", 0)),
@@ -446,7 +475,33 @@ async def afl_instances(request: Request):
             "cycles_done":   int(kv.get("cycles_done", 0)),
             "cur_item":      int(kv.get("cur_item", 0)),
             "last_update":   last_upd,
-        })
+        }
+
+    # ── Prefer afl_sync/ (distributed stable dir) ─────────────────────────────
+    sync_dir = AFL_SYNC_DIR
+    if sync_dir.is_dir():
+        for inst_dir in sorted(sync_dir.iterdir()):
+            if not inst_dir.is_dir():
+                continue
+            entry = _read_inst(inst_dir, "live")
+            if entry:
+                result.append(entry)
+
+    # ── Fall back to latest per-run afl_out/ dir ───────────────────────────────
+    if not result:
+        afl_out = Path(RESULTS_DIR) / "afl_out"
+        if afl_out.is_dir():
+            runs = sorted(afl_out.iterdir(), reverse=True)
+            if runs:
+                run_path = runs[0]
+                run_id   = run_path.name
+                for inst_dir in sorted(run_path.iterdir()):
+                    if not inst_dir.is_dir():
+                        continue
+                    entry = _read_inst(inst_dir, run_id)
+                    if entry:
+                        result.append(entry)
+
     return result
 
 
@@ -647,6 +702,215 @@ async def proxy_machine(request: Request, machine_name: str, endpoint: str):
     if data is None:
         raise HTTPException(502, f"Could not reach {machine_name}")
     return data
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DISTRIBUTED SYNC API
+# Remote workers use these endpoints to sync corpus bidirectionally.
+# No auth required on write endpoints (workers use API key header instead).
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _sync_entries_from_dir(queue_dir: Path) -> list[dict]:
+    """Return [{hash, name, size}] for all valid corpus files in a queue dir."""
+    result = []
+    if not queue_dir.is_dir():
+        return result
+    for f in queue_dir.iterdir():
+        if not f.is_file() or f.name.startswith("."):
+            continue
+        try:
+            data = f.read_bytes()
+            if len(data) == 0 or len(data) > MAX_SYNC_FILE_BYTES:
+                continue
+            h = hashlib.sha1(data).hexdigest()
+            result.append({"hash": h, "name": f.name, "size": len(data)})
+        except Exception:
+            continue
+    return result
+
+
+@app.get("/api/sync/entries")
+async def sync_list_entries(request: Request):
+    """
+    List all corpus entries from main AFL instance queue.
+    Workers call this to know what to download.
+    Returns: [{hash, name, size}]
+    """
+    check_auth(request)
+    # Prefer the live afl_sync/main/queue; fall back to latest run
+    queue_dir = AFL_SYNC_DIR / "main" / "queue"
+    if not queue_dir.is_dir():
+        # Fall back: find latest run's main queue
+        afl_out = Path(RESULTS_DIR) / "afl_out"
+        if afl_out.is_dir():
+            for run in sorted(afl_out.iterdir(), reverse=True):
+                q = run / "main" / "queue"
+                if q.is_dir():
+                    queue_dir = q
+                    break
+    entries = _sync_entries_from_dir(queue_dir)
+    return entries
+
+
+@app.get("/api/sync/entry/{file_hash}")
+async def sync_download_entry(request: Request, file_hash: str):
+    """Download a specific corpus entry by SHA1 hash."""
+    check_auth(request)
+    if len(file_hash) != 40 or not all(c in "0123456789abcdef" for c in file_hash):
+        raise HTTPException(400, "Invalid hash")
+
+    # Search main queue for matching hash
+    queue_dir = AFL_SYNC_DIR / "main" / "queue"
+    if not queue_dir.is_dir():
+        afl_out = Path(RESULTS_DIR) / "afl_out"
+        if afl_out.is_dir():
+            for run in sorted(afl_out.iterdir(), reverse=True):
+                q = run / "main" / "queue"
+                if q.is_dir():
+                    queue_dir = q
+                    break
+
+    if queue_dir.is_dir():
+        for f in queue_dir.iterdir():
+            if not f.is_file():
+                continue
+            try:
+                data = f.read_bytes()
+                if hashlib.sha1(data).hexdigest() == file_hash:
+                    return Response(content=data, media_type="application/octet-stream")
+            except Exception:
+                continue
+
+    raise HTTPException(404, "Entry not found")
+
+
+@app.post("/api/sync/entry/{worker_name}/{filename}")
+async def sync_upload_entry(request: Request, worker_name: str, filename: str):
+    """
+    Worker uploads a new corpus discovery.
+    Stored in afl_sync/<worker_name>/queue/<filename>
+    AFL++ running on the controller will pick it up automatically.
+    """
+    # Sanitize inputs
+    safe_worker = "".join(c for c in worker_name if c.isalnum() or c in "_-")[:32]
+    safe_file   = Path(filename).name[:128]
+    if not safe_worker or not safe_file:
+        raise HTTPException(400, "Invalid worker name or filename")
+
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "Empty body")
+    if len(data) > MAX_SYNC_FILE_BYTES:
+        raise HTTPException(413, f"File too large (max {MAX_SYNC_FILE_BYTES})")
+
+    dest_dir = AFL_SYNC_DIR / safe_worker / "queue"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    # Use hash-based dedup
+    h = hashlib.sha1(data).hexdigest()
+    dest = dest_dir / f"{safe_file}_{h[:8]}"
+    if not dest.exists():
+        dest.write_bytes(data)
+        return {"ok": True, "stored": True, "hash": h, "worker": safe_worker}
+    return {"ok": True, "stored": False, "hash": h, "worker": safe_worker, "reason": "duplicate"}
+
+
+@app.post("/api/sync/worker_ping")
+async def sync_worker_ping(request: Request):
+    """Worker reports it's alive and sends its current stats."""
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+
+    worker_name = payload.get("worker_name", "unknown")[:32]
+    with _worker_registry_lock:
+        _worker_registry[worker_name] = {
+            "worker_name":  worker_name,
+            "instances":    payload.get("instances", []),
+            "downloaded":   payload.get("downloaded", 0),
+            "uploaded":     payload.get("uploaded", 0),
+            "last_ping":    int(time.time()),
+            "last_ping_str": time.strftime("%H:%M:%S"),
+        }
+    return {"ok": True}
+
+
+@app.get("/api/sync/workers")
+async def sync_list_workers(request: Request):
+    """List all connected worker machines with their AFL stats."""
+    check_auth(request)
+    now = int(time.time())
+    with _worker_registry_lock:
+        workers = []
+        for w in _worker_registry.values():
+            w = dict(w)
+            w["alive"] = (now - w.get("last_ping", 0)) < 90
+            w["stale_sec"] = now - w.get("last_ping", 0)
+            workers.append(w)
+    return sorted(workers, key=lambda x: x.get("last_ping", 0), reverse=True)
+
+
+@app.get("/api/sync/corpus_stats")
+async def sync_corpus_stats(request: Request):
+    """Stats about the distributed sync corpus."""
+    check_auth(request)
+    AFL_SYNC_DIR.mkdir(parents=True, exist_ok=True)
+
+    stats = {
+        "sync_dir": str(AFL_SYNC_DIR),
+        "instances": [],
+        "total_entries": 0,
+        "main_entries": 0,
+        "worker_entries": 0,
+    }
+
+    if AFL_SYNC_DIR.is_dir():
+        for inst_dir in sorted(AFL_SYNC_DIR.iterdir()):
+            if not inst_dir.is_dir():
+                continue
+            q = inst_dir / "queue"
+            count = sum(1 for f in q.iterdir() if f.is_file() and not f.name.startswith(".")) if q.is_dir() else 0
+            role  = "main" if inst_dir.name == "main" else "secondary" if inst_dir.name.startswith("s") and inst_dir.name[1:].isdigit() else "worker"
+
+            # Read fuzzer_stats if present
+            fs = inst_dir / "fuzzer_stats"
+            fstats = {}
+            if fs.is_file():
+                try:
+                    for line in fs.read_text().splitlines():
+                        if ":" in line:
+                            k, _, v = line.partition(":")
+                            fstats[k.strip()] = v.strip()
+                except Exception:
+                    pass
+
+            stats["instances"].append({
+                "name":          inst_dir.name,
+                "role":          role,
+                "queue_count":   count,
+                "edges_found":   int(fstats.get("edges_found", 0)),
+                "execs_per_sec": float(fstats.get("execs_per_sec", 0)),
+                "corpus_count":  int(fstats.get("corpus_count", 0)),
+                "saved_crashes": int(fstats.get("saved_crashes", 0)),
+                "execs_done":    int(fstats.get("execs_done", 0)),
+                "last_update":   int(fstats.get("last_update", 0)),
+            })
+
+            stats["total_entries"] += count
+            if role == "main":
+                stats["main_entries"] = count
+            elif role == "worker":
+                stats["worker_entries"] += count
+
+    with _worker_registry_lock:
+        stats["registered_workers"] = len(_worker_registry)
+        stats["active_workers"]     = sum(
+            1 for w in _worker_registry.values()
+            if (int(time.time()) - w.get("last_ping", 0)) < 90
+        )
+
+    return stats
+
 
 # ── Static ────────────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="/dashboard/static"), name="static")

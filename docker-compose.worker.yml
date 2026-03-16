@@ -1,32 +1,35 @@
 version: "3.9"
-# ─── DEFAULT: CONTROLLER mode ────────────────────────────────────────────────
-# This is the main docker-compose for the controller machine.
-# For remote workers, use: docker-compose -f docker-compose.worker.yml
+# ─── WORKER (remote machine, e.g. powerhorse) ────────────────────────────────
+# Runs AFL++ secondary instances only.
+# Sync agent pulls main/queue from controller and pushes discoveries back.
 #
-# Quick start:
-#   docker-compose up --build
+# Usage on remote machine (powerhorse):
+#   CONTROLLER_URL=http://<controller_ip>:56789 \
+#   WORKER_NAME=ph \
+#   AFL_CORES=28 \
+#   docker-compose -f docker-compose.worker.yml up --build
 #
-# Scale local cores:
-#   AFL_CORES=4 docker-compose up --build
+# Or with env file:
+#   docker-compose -f docker-compose.worker.yml --env-file worker.env up --build
 
 services:
-  # ─── Dashboard ──────────────────────────────────────────────────
+  # ─── Dashboard sidecar (local stats only) ───────────────────────────────────
   dashboard:
     build:
       context: .
       dockerfile: docker/Dockerfile.dashboard
-    container_name: isobmff-dashboard
+    container_name: isobmff-dashboard-worker
     ports:
       - "56789:56789"
     volumes:
       - ./results:/results
-      - ./dashboard/static:/dashboard/static   # hot-reload UI
+      - ./dashboard/static:/dashboard/static
     environment:
       - DB_PATH=/results/fuzzer.db
       - RESULTS_DIR=/results
       - AFL_SYNC_DIR=/results/afl_sync
-      - MACHINE_NAME=controller
-      - REMOTE_MACHINES=powerhorse:http://16.16.169.131:56789:helloworld
+      - MACHINE_NAME=${WORKER_NAME:-worker}
+      - REMOTE_MACHINES=      # workers don't aggregate other machines
       - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-helloworld}
       - SECRET_KEY=${SECRET_KEY:-fuzzer-secret-key-change-me}
     restart: unless-stopped
@@ -36,12 +39,12 @@ services:
       timeout: 5s
       retries: 3
 
-  # ─── Fuzzer (AFL++ controller) ──────────────────────────────────
+  # ─── AFL++ worker instances + sync agent ────────────────────────────────────
   fuzzer:
     build:
       context: .
       dockerfile: docker/Dockerfile.fuzzer
-    container_name: isobmff-fuzzer
+    container_name: isobmff-fuzzer-worker
     volumes:
       - ./results:/results
       - ./fuzzer/corpus:/fuzzer/corpus
@@ -49,13 +52,16 @@ services:
     environment:
       - DASHBOARD_API=http://dashboard:56789
       - AFL_SYNC_DIR=/results/afl_sync
-      - MAX_TOTAL_TIME=${FUZZ_TIME:-0}     # 0 = run forever
-      - MAX_LEN=${MAX_LEN:-65536}
-      - AFL_CORES=${AFL_CORES:-2}
+      - CONTROLLER_URL=${CONTROLLER_URL}          # REQUIRED: controller dashboard URL
+      - WORKER_NAME=${WORKER_NAME:-worker}         # unique name for this machine
+      - MAX_TOTAL_TIME=${FUZZ_TIME:-0}
+      - AFL_CORES=${AFL_CORES:-1}
       - AFL_NO_AFFINITY=1
       - AFL_SKIP_CPUFREQ=1
       - AFL_AUTORESUME=1
       - AFL_IMPORT_FIRST=1
+      - SYNC_INTERVAL=${SYNC_INTERVAL:-30}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-helloworld}
       - ASAN_OPTIONS=halt_on_error=0:abort_on_error=0:detect_leaks=0:allocator_may_return_null=1
       - UBSAN_OPTIONS=halt_on_error=0:print_stacktrace=1
     depends_on:
@@ -66,8 +72,8 @@ services:
         echo core > /proc/sys/kernel/core_pattern 2>/dev/null || true
         echo 0    > /proc/sys/kernel/randomize_va_space 2>/dev/null || true
         while true; do
-          /scripts/run_controller.sh
-          echo '[*] Run complete. Sleeping 5s...'
+          /scripts/run_worker.sh
+          echo '[*] Worker run complete. Sleeping 5s...'
           sleep 5
         done
       "

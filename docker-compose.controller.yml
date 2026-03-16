@@ -1,16 +1,16 @@
 version: "3.9"
-# ─── DEFAULT: CONTROLLER mode ────────────────────────────────────────────────
-# This is the main docker-compose for the controller machine.
-# For remote workers, use: docker-compose -f docker-compose.worker.yml
+# ─── CONTROLLER (this machine) ───────────────────────────────────────────────
+# Runs AFL++ main instance + local secondaries.
+# Remote workers connect to this machine's dashboard and sync corpus via HTTP.
 #
-# Quick start:
-#   docker-compose up --build
+# Usage:
+#   docker-compose -f docker-compose.controller.yml up --build
 #
-# Scale local cores:
-#   AFL_CORES=4 docker-compose up --build
+# Scale local cores (e.g. 4 total):
+#   AFL_CORES=4 docker-compose -f docker-compose.controller.yml up --build
 
 services:
-  # ─── Dashboard ──────────────────────────────────────────────────
+  # ─── Dashboard (controller) ─────────────────────────────────────────────────
   dashboard:
     build:
       context: .
@@ -26,7 +26,9 @@ services:
       - RESULTS_DIR=/results
       - AFL_SYNC_DIR=/results/afl_sync
       - MACHINE_NAME=controller
-      - REMOTE_MACHINES=powerhorse:http://16.16.169.131:56789:helloworld
+      # Remote machines to aggregate in the dashboard
+      # Format: "label:url:password,..."
+      - REMOTE_MACHINES=${REMOTE_MACHINES:-powerhorse:http://16.16.169.131:56789:helloworld}
       - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-helloworld}
       - SECRET_KEY=${SECRET_KEY:-fuzzer-secret-key-change-me}
     restart: unless-stopped
@@ -36,7 +38,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # ─── Fuzzer (AFL++ controller) ──────────────────────────────────
+  # ─── AFL++ controller (main + local secondaries) ────────────────────────────
   fuzzer:
     build:
       context: .
@@ -49,9 +51,9 @@ services:
     environment:
       - DASHBOARD_API=http://dashboard:56789
       - AFL_SYNC_DIR=/results/afl_sync
-      - MAX_TOTAL_TIME=${FUZZ_TIME:-0}     # 0 = run forever
+      - MAX_TOTAL_TIME=${FUZZ_TIME:-0}     # 0 = run forever (restart on crash only)
       - MAX_LEN=${MAX_LEN:-65536}
-      - AFL_CORES=${AFL_CORES:-2}
+      - AFL_CORES=${AFL_CORES:-2}          # local cores only (main + N-1 secondaries)
       - AFL_NO_AFFINITY=1
       - AFL_SKIP_CPUFREQ=1
       - AFL_AUTORESUME=1
@@ -67,7 +69,7 @@ services:
         echo 0    > /proc/sys/kernel/randomize_va_space 2>/dev/null || true
         while true; do
           /scripts/run_controller.sh
-          echo '[*] Run complete. Sleeping 5s...'
+          echo '[*] Controller run complete. Sleeping 5s...'
           sleep 5
         done
       "
