@@ -117,7 +117,7 @@ def check_auth(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    PUBLIC = {"/auth/login", "/auth/logout", "/favicon.ico"}
+    PUBLIC = {"/auth/login", "/auth/logout", "/favicon.ico", "/health"}
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         if path in self.PUBLIC:
@@ -133,6 +133,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
 app.add_middleware(AuthMiddleware)
 
 # ── Startup ───────────────────────────────────────────────────────────────────
+@app.get("/health", include_in_schema=False)
+async def health():
+    return {"ok": True}
+
 @app.on_event("startup")
 async def startup():
     init_db()
