@@ -622,6 +622,86 @@ async def rescan(request: Request, background_tasks: BackgroundTasks):
     background_tasks.add_task(scan_and_import_results, RESULTS_DIR)
     return {"ok": True}
 
+
+@app.get("/api/mutators")
+async def get_mutators(request: Request):
+    """Return info about loaded custom mutators for this machine."""
+    check_auth(request)
+    mutators = []
+
+    # 1. Check AFL_CUSTOM_MUTATOR_LIBRARY env var
+    mutator_lib = os.environ.get("AFL_CUSTOM_MUTATOR_LIBRARY", "")
+    if mutator_lib:
+        exists = os.path.isfile(mutator_lib)
+        name = os.path.splitext(os.path.basename(mutator_lib))[0]
+        mutators.append({
+            "name": name,
+            "path": mutator_lib,
+            "loaded": exists,
+            "source": "env",
+        })
+
+    # 2. Scan fuzzer logs for "Loaded custom mutator" messages
+    loaded_from_log: set = set()
+    import re as _re
+    try:
+        runs_dir = os.path.join(RESULTS_DIR, "runs")
+        if os.path.isdir(runs_dir):
+            run_dirs = sorted(os.listdir(runs_dir))
+            if run_dirs:
+                latest = os.path.join(runs_dir, run_dirs[-1])
+                for fname in os.listdir(latest):
+                    if not fname.endswith(".log"):
+                        continue
+                    fpath = os.path.join(latest, fname)
+                    try:
+                        with open(fpath, "rb") as f:
+                            chunk = f.read(16384)  # read first 16KB
+                        text = chunk.decode("utf-8", errors="replace")
+                        # Match AFL++ log line (may have ANSI escape codes)
+                        clean = _re.sub(r'\x1b\[[0-9;]*m', '', text)
+                        m2 = _re.search(
+                            r"Loading custom mutator library from '([^']+)'", clean
+                        )
+                        if m2:
+                            loaded_from_log.add(m2.group(1))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    for path in loaded_from_log:
+        name = os.path.splitext(os.path.basename(path))[0]
+        if not any(m["path"] == path for m in mutators):
+            mutators.append({
+                "name": name,
+                "path": path,
+                "loaded": True,
+                "source": "log",
+            })
+
+    # 3. Check well-known default paths if nothing found yet
+    if not mutators:
+        for candidate in [
+            os.path.join(RESULTS_DIR, "isobmff_mutator.so"),
+            "/fuzzer/isobmff_mutator.so",
+        ]:
+            if os.path.isfile(candidate):
+                mutators.append({
+                    "name": "isobmff_mutator",
+                    "path": candidate,
+                    "loaded": False,  # exists but not confirmed loaded
+                    "source": "discovered",
+                })
+                break
+
+    return {
+        "machine": _MACHINE_NAME,
+        "mutators": mutators,
+        "count": len(mutators),
+        "any_loaded": any(m["loaded"] for m in mutators),
+    }
+
 # ── Multi-machine endpoints ───────────────────────────────────────────────────
 
 @app.get("/api/machines")

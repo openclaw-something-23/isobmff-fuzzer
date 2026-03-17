@@ -100,7 +100,7 @@ coverage: libfuzzer
 # ──────────────────────────────────────────────────────────────────────────────
 mutator: isobmff_mutator.c
 	@echo "[*] Building custom ISOBMFF mutator..."
-	afl-clang-fast -shared -fPIC -O2 \
+	gcc -shared -fPIC -O2 \
 	  isobmff_mutator.c \
 	  -o isobmff_mutator.so
 	@echo "[+] Built: ./isobmff_mutator.so"

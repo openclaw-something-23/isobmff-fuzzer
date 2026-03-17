@@ -208,6 +208,21 @@
   /* ── Help tooltip ── */
   .help { cursor: help; color: var(--muted); font-size: 0.7rem; border-bottom: 1px dashed var(--muted); }
 
+  /* ── Mutator badges ── */
+  .mc-mutator-row {
+    padding: 7px 14px; border-top: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  }
+  .mut-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.7rem; font-weight: 600; padding: 2px 8px;
+    border-radius: 10px; font-family: monospace;
+  }
+  .mut-loaded     { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+  .mut-discovered { background: rgba(227,179,65,.12); color: var(--orange); border: 1px solid rgba(227,179,65,.3); }
+  .mut-none       { background: rgba(248,81,73,.1);   color: var(--red);    border: 1px solid rgba(248,81,73,.25); }
+  .mut-loading    { background: rgba(125,133,144,.1); color: var(--muted);  border: 1px solid var(--border); }
+
   /* ── Footer ── */
   footer { padding: 16px 24px; text-align: center; color: var(--muted); font-size: 0.72rem; border-top: 1px solid var(--border); margin-top: 16px; }
   footer a { color: var(--blue); text-decoration: none; }
@@ -530,6 +545,23 @@ function renderMachineCard(m) {
     ? `<div class="mc-instances">${instancesHtml}</div>`
     : '';
 
+  // Mutator badges
+  const mutInfo = m.mutators || null;
+  const mutHtml = mutInfo
+    ? (() => {
+        if (!mutInfo.mutators || mutInfo.mutators.length === 0) {
+          return `<div class="mc-mutator-row"><span class="mut-badge mut-none">⚠ no custom mutator</span></div>`;
+        }
+        const badges = mutInfo.mutators.map(mu => {
+          const cls = mu.loaded ? 'mut-loaded' : 'mut-discovered';
+          const icon = mu.loaded ? '🧬' : '📦';
+          const tip = mu.loaded ? `Loaded from ${mu.source}` : `Found at ${mu.path} (not confirmed loaded)`;
+          return `<span class="mut-badge ${cls}" title="${tip}">${icon} ${mu.name}</span>`;
+        }).join('');
+        return `<div class="mc-mutator-row">${badges}</div>`;
+      })()
+    : `<div class="mc-mutator-row"><span class="mut-badge mut-loading">⟳ loading mutator info…</span></div>`;
+
   return `
   <div class="machine-card ${aliveClass}">
     <div class="mc-header">
@@ -575,6 +607,7 @@ function renderMachineCard(m) {
         <div class="mc-stat-sub">saved</div>
       </div>
     </div>
+    ${mutHtml}
     ${instSection}
   </div>`;
 }
@@ -608,15 +641,18 @@ async function loadMachines() {
     const machines = await fetch('/api/machines', { credentials: 'include' }).then(r => r.json()).catch(() => null);
     if (!machines) return;
 
-    // For powerhorse: fetch its instance list via proxy
+    // Fetch live data + mutators for each machine
     for (const m of machines) {
-      if (!m.is_local && m.alive) {
+      if (m.is_local) {
+        // Local mutators
+        const mut = await fetch('/api/mutators', { credentials: 'include' }).then(r => r.json()).catch(() => null);
+        if (mut) m.mutators = mut;
+      } else if (m.alive) {
         try {
           const live = await fetch(`/api/machines/${m.name}/live`, { credentials: 'include' }).then(r => r.json()).catch(() => null);
-          if (live && live.instance_list) {
-            m.instance_list = live.instance_list;
-            m.live = { ...m.live, ...live };
-          }
+          if (live) { m.live = { ...m.live, ...live }; if (live.instance_list) m.instance_list = live.instance_list; }
+          const mut = await fetch(`/api/machines/${m.name}/mutators`, { credentials: 'include' }).then(r => r.json()).catch(() => null);
+          if (mut) m.mutators = mut;
         } catch(e) {}
       }
     }

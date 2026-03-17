@@ -80,6 +80,12 @@ ACTIVE_SEEDS="${SEEDS_OK}"
 
 # ── Dict flag ─────────────────────────────────────────────────────────────────
 DICT_FLAG=""; [ -f "${DICT}" ] && DICT_FLAG="-x ${DICT}"
+
+# ── Custom mutator ────────────────────────────────────────────────────────────
+MUTATOR_SO="${MUTATOR_SO:-/results/isobmff_mutator.so}"
+[ -f "$MUTATOR_SO" ] || MUTATOR_SO="/fuzzer/isobmff_mutator.so"
+[ -f "${MUTATOR_SO}" ] && export AFL_CUSTOM_MUTATOR_LIBRARY="${MUTATOR_SO}"
+
 export AFL_IMPORT_FIRST=1
 
 # ── Start sync agent (background) ─────────────────────────────────────────────
