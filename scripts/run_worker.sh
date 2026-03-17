@@ -105,6 +105,9 @@ INSTANCE_PIDS=()
 for i in $(seq 1 "${N_CORES}"); do
     INST_NAME="${WORKER_NAME}_${i}"
     echo "[*] Launching AFL++ instance: -S ${INST_NAME}"
+    TIME_FLAG=""
+    [ "${MAX_TOTAL_TIME:-0}" -gt 0 ] && TIME_FLAG="-V ${MAX_TOTAL_TIME}"
+
     AFL_IGNORE_SEED_PROBLEMS=1 \
     AFL_AUTORESUME=1 \
     AFL_IMPORT_FIRST=1 \
@@ -115,7 +118,7 @@ for i in $(seq 1 "${N_CORES}"); do
       -S "${INST_NAME}" \
       -i "${ACTIVE_SEEDS}" \
       -o "${AFL_SYNC_DIR}" \
-      ${MAX_TOTAL_TIME:+${MAX_TOTAL_TIME:+-V "${MAX_TOTAL_TIME}"}} \
+      ${TIME_FLAG} \
       -t "${TIMEOUT_MS}" \
       ${DICT_FLAG} \
       -- "${HARNESS}" \

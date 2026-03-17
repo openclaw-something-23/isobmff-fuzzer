@@ -104,6 +104,9 @@ export AFL_BENCH_UNTIL_CRASH="${AFL_BENCH_UNTIL_CRASH:-0}"
 
 # ── Launch main instance ───────────────────────────────────────────────────────
 # Use AFL_AUTORESUME: resumes from existing queue if afl_sync/main/ already exists
+TIME_FLAG=""
+[ "${MAX_TOTAL_TIME:-0}" -gt 0 ] && TIME_FLAG="-V ${MAX_TOTAL_TIME}"
+
 AFL_IGNORE_SEED_PROBLEMS=1 \
 AFL_MAP_SIZE=262144 \
 AFL_AUTORESUME=1 \
@@ -113,7 +116,7 @@ afl-fuzz \
   -M main \
   -i "${ACTIVE_SEEDS}" \
   -o "${AFL_SYNC_DIR}" \
-  ${MAX_TOTAL_TIME:+-V "${MAX_TOTAL_TIME}"} \
+  ${TIME_FLAG} \
   -t "${TIMEOUT_MS}" \
   -p "${POWER_SCHEDULE}" \
   ${DICT_FLAG} \
@@ -137,7 +140,7 @@ if [ "${N_CORES}" -gt 1 ]; then
           -S "s${i}" \
           -i "${ACTIVE_SEEDS}" \
           -o "${AFL_SYNC_DIR}" \
-          ${MAX_TOTAL_TIME:+-V "${MAX_TOTAL_TIME}"} \
+          ${TIME_FLAG} \
           -t "${TIMEOUT_MS}" \
           ${DICT_FLAG} \
           -- "${HARNESS}" \
