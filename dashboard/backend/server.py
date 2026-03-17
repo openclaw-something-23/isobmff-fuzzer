@@ -637,15 +637,22 @@ async def list_machines(request: Request):
             live = json.loads(stats_path.read_text()) if stats_path.exists() else {}
         except Exception:
             live = {}
-        # Normalize same as /api/live — count actual AFL instances from afl_out
+        # Count instances from afl_sync (distributed mode) or afl_out (legacy)
         try:
-            run_id = live.get("run_id", "")
-            if run_id:
-                rp = Path(RESULTS_DIR) / "afl_out" / run_id
-                if rp.is_dir():
-                    n = len([d for d in rp.iterdir() if d.is_dir()])
-                    if n > 0:
-                        live["instances"] = n
+            sync_dir = AFL_SYNC_DIR
+            if sync_dir.is_dir():
+                n = sum(1 for d in sync_dir.iterdir()
+                        if d.is_dir() and (d / "fuzzer_stats").exists())
+                if n > 0:
+                    live["instances"] = n
+            elif not live.get("instances"):
+                run_id = live.get("run_id", "")
+                if run_id:
+                    rp = Path(RESULTS_DIR) / "afl_out" / run_id
+                    if rp.is_dir():
+                        n = len([d for d in rp.iterdir() if d.is_dir()])
+                        if n > 0:
+                            live["instances"] = n
         except Exception:
             pass
         live.setdefault("instances", live.get("afl_instances", 1))
@@ -668,27 +675,46 @@ async def list_machines(request: Request):
             total_crashes, max_edges = 0, 0
 
         return {
-            "name": _MACHINE_NAME,
-            "url": "local",
-            "status": "local",
-            "live": live,
-            "mp4gen": mp4,
+            "name":          _MACHINE_NAME,
+            "url":           "local",
+            "status":        "local",
+            "alive":         True,
+            "is_local":      True,
+            # flat fields for dashboard JS
+            "execs_per_sec": live.get("execs_per_sec", 0),
+            "edges_found":   live.get("edges_found", max_edges),
+            "corpus_count":  live.get("corpus_count", 0),
+            "instances":     live.get("instances", 0),
             "total_crashes": total_crashes,
-            "max_edges": max_edges,
+            "max_edges":     max_edges,
+            # nested for legacy
+            "live":          live,
+            "mp4gen":        mp4,
         }
 
     async def remote_stats(machine: dict):
         stats_data  = await _remote_get(machine, "/api/stats")
         live_data   = await _remote_get(machine, "/api/live")
         mp4gen_data = await _remote_get(machine, "/api/mp4gen")
-        ok = stats_data is not None
+        ok   = stats_data is not None
+        live = live_data or {}
         return {
-            "name": machine["name"],
-            "url": machine["url"],
-            "status": "ok" if ok else "unreachable",
-            "stats": stats_data,
-            "live": live_data,
-            "mp4gen": mp4gen_data,
+            "name":          machine["name"],
+            "url":           machine["url"],
+            "status":        "ok" if ok else "unreachable",
+            "alive":         ok,
+            "is_local":      False,
+            # flat fields for dashboard JS
+            "execs_per_sec": live.get("execs_per_sec", 0),
+            "edges_found":   live.get("edges_found", 0),
+            "corpus_count":  live.get("corpus_count", 0),
+            "instances":     live.get("instances", 0),
+            "total_crashes": (stats_data or {}).get("total_crashes", 0),
+            "max_edges":     (stats_data or {}).get("max_edges", 0),
+            # nested for legacy
+            "stats":         stats_data,
+            "live":          live,
+            "mp4gen":        mp4gen_data,
         }
 
     tasks = [local_stats()] + [remote_stats(m) for m in REMOTE_MACHINES]
