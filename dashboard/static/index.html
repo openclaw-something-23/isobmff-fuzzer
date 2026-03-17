@@ -27,10 +27,7 @@
   body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
 
   /* ── Login ── */
-  #login-screen {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; background: var(--bg);
-  }
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
   .login-box {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--r); padding: 40px; width: 340px; text-align: center;
@@ -50,96 +47,131 @@
   .login-box button:hover { opacity: 0.9; }
   #login-err { color: var(--red); font-size: 0.8rem; margin-top: 8px; }
 
-  /* ── App layout ── */
+  /* ── App ── */
   #app { display: none; }
+
+  /* ── Header ── */
   header {
     background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px;
+    padding: 0 24px; display: flex; align-items: center; gap: 12px; height: 52px;
     position: sticky; top: 0; z-index: 100;
   }
-  header h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+  header h1 { font-size: 1rem; font-weight: 700; }
   header h1 span { color: var(--blue); }
+  .spacer { flex: 1; }
   .badge {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 0.72rem; font-weight: 600; padding: 2px 8px;
     border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em;
   }
   .badge-green { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
-  .badge-red   { background: rgba(248,81,73,.15); color: var(--red);   border: 1px solid rgba(248,81,73,.3); }
+  .badge-red   { background: rgba(248,81,73,.15);  color: var(--red);   border: 1px solid rgba(248,81,73,.3); }
   .badge-muted { background: rgba(125,133,144,.1); color: var(--muted); border: 1px solid var(--border); }
-  #header-status { margin-left: 4px; }
-  header .spacer { flex: 1; }
-  #header-live {
-    font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 6px;
-  }
-  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.4s infinite; }
+  .badge-orange{ background: rgba(227,179,65,.15); color: var(--orange);border: 1px solid rgba(227,179,65,.3); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.4s infinite; display: inline-block; }
   .pulse.off { background: var(--muted); animation: none; }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.2)} }
+  #header-refresh { font-size: 0.72rem; color: var(--muted); }
 
+  /* ── Main layout ── */
   main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
 
-  /* ── Live banner ── */
-  #live-banner {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
-    padding: 14px 18px; margin-bottom: 18px; display: none;
+  /* ── Combined totals bar ── */
+  #totals-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 12px 20px;
+    display: flex; align-items: center; gap: 0; margin-bottom: 16px;
+    flex-wrap: wrap;
   }
-  #live-banner.active { border-color: var(--green); display: block; }
-  .live-header {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  .total-item {
+    flex: 1; min-width: 120px; text-align: center;
+    padding: 4px 12px;
+    border-right: 1px solid var(--border);
   }
-  .live-header strong { font-size: 0.85rem; }
-  .live-header .run-id { font-family: monospace; font-size: 0.75rem; color: var(--muted); margin-left: auto; }
-  .live-header .elapsed { font-size: 0.75rem; color: var(--muted); }
-  .live-grid {
+  .total-item:last-child { border-right: none; }
+  .total-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+  .total-val { font-size: 1.4rem; font-weight: 700; }
+
+  /* ── Machine cards ── */
+  .machines-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
   }
-  .live-metric {
-    background: var(--surface2); border-radius: 6px; padding: 10px 12px;
-    border: 1px solid var(--border);
+  @media (max-width: 800px) { .machines-row { grid-template-columns: 1fr; } }
+
+  .machine-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); overflow: hidden;
+    transition: border-color 0.2s;
   }
-  .live-metric .lm-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
-  .live-metric .lm-val { font-size: 1.3rem; font-weight: 700; }
+  .machine-card.alive { border-color: rgba(63,185,80,.3); }
+  .machine-card.dead  { border-color: rgba(248,81,73,.3); }
 
-  /* ── Summary cards ── */
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; }
-  .card-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
-  .card-value { font-size: 1.5rem; font-weight: 700; }
-  .card-sub { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+  .mc-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .mc-title { font-size: 1rem; font-weight: 700; }
+  .mc-role  { font-size: 0.7rem; color: var(--muted); }
+  .mc-badge { margin-left: auto; }
+  .mc-url   { font-size: 0.7rem; color: var(--muted); }
 
-  /* ── Two-col layout ── */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
-  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+  .mc-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0; padding: 0;
+  }
+  .mc-stat {
+    padding: 14px 16px; text-align: center;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .mc-stat:nth-child(3n) { border-right: none; }
+  .mc-stat:nth-last-child(-n+3) { border-bottom: none; }
 
-  /* ── Panel ── */
+  .mc-stat-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .mc-stat-val   { font-size: 1.3rem; font-weight: 700; }
+  .mc-stat-sub   { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── Instances section ── */
+  .mc-instances {
+    border-top: 1px solid var(--border);
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .inst-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-bottom: 1px solid rgba(48,54,61,.4);
+    font-size: 0.78rem;
+  }
+  .inst-row:last-child { border-bottom: none; }
+  .inst-name { font-family: monospace; font-weight: 600; min-width: 60px; }
+  .inst-role-main { background: rgba(227,179,65,.2); color: var(--orange); font-size: .6rem; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+  .inst-role-sec  { background: rgba(88,166,255,.15); color: var(--blue); font-size: .6rem; padding: 1px 5px; border-radius: 3px; }
+  .inst-role-work { background: rgba(188,140,255,.15); color: var(--purple); font-size: .6rem; padding: 1px 5px; border-radius: 3px; }
+  .inst-metric { color: var(--muted); }
+  .inst-metric span { color: var(--text); font-weight: 500; }
+  .inst-spacer { flex: 1; }
+  .inst-alive-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .inst-alive-dot.on  { background: var(--green); }
+  .inst-alive-dot.off { background: var(--muted); }
+
+  /* ── Charts row ── */
+  .charts-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 16px;
+  }
+  @media (max-width: 800px) { .charts-row { grid-template-columns: 1fr; } }
+
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
   .panel-header {
     padding: 12px 16px; border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;
   }
-  .panel-header .ph-icon { font-size: 1rem; }
-  .panel-header .ph-sub { color: var(--muted); font-weight: 400; margin-left: auto; font-size: 0.72rem; }
-  .panel-body { padding: 0; }
-
-  /* ── Table ── */
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  thead th { padding: 8px 12px; text-align: left; color: var(--muted); font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); position: sticky; top: 52px; background: var(--surface); }
-  tbody td { padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,.5); }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: var(--surface2); }
-  .mono { font-family: monospace; font-size: 0.78rem; }
-
-  /* ── Chart ── */
-  .chart-wrap { padding: 16px; height: 220px; }
-
-  /* ── Severity badge ── */
-  .sev { padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
-  .sev-crit { background: rgba(248,81,73,.2); color: var(--red); }
-  .sev-high { background: rgba(227,179,65,.2); color: var(--orange); }
-  .sev-med  { background: rgba(88,166,255,.2); color: var(--blue); }
-  .sev-low  { background: rgba(125,133,144,.15); color: var(--muted); }
+  .ph-sub { color: var(--muted); font-weight: 400; margin-left: auto; font-size: 0.72rem; }
+  .chart-wrap { padding: 16px; height: 200px; }
 
   /* ── Tabs ── */
   .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 16px; }
@@ -148,23 +180,42 @@
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
 
-  /* ── Empty state ── */
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  thead th {
+    padding: 8px 12px; text-align: left; color: var(--muted);
+    font-weight: 600; font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: .04em; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,.5); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+  .mono { font-family: monospace; font-size: 0.78rem; }
   .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
-  /* ── Footer ── */
-  footer { padding: 16px 24px; text-align: center; color: var(--muted); font-size: 0.72rem; border-top: 1px solid var(--border); margin-top: 24px; }
-
-  /* ── Tooltip for coverage explanation ── */
-  .help { cursor: help; color: var(--muted); font-size: 0.7rem; vertical-align: middle; border-bottom: 1px dashed var(--muted); }
+  /* ── Severity ── */
+  .sev { padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
+  .sev-crit { background: rgba(248,81,73,.2);   color: var(--red); }
+  .sev-high { background: rgba(227,179,65,.2);  color: var(--orange); }
+  .sev-med  { background: rgba(88,166,255,.2);  color: var(--blue); }
+  .sev-low  { background: rgba(125,133,144,.15);color: var(--muted); }
 
   /* ── Score bar ── */
   .score-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; overflow: hidden; }
-  .score-bar-fill { height: 100%; background: var(--purple); border-radius: 2px; transition: width .4s; }
+  .score-bar-fill { height: 100%; background: var(--purple); border-radius: 2px; }
+
+  /* ── Help tooltip ── */
+  .help { cursor: help; color: var(--muted); font-size: 0.7rem; border-bottom: 1px dashed var(--muted); }
+
+  /* ── Footer ── */
+  footer { padding: 16px 24px; text-align: center; color: var(--muted); font-size: 0.72rem; border-top: 1px solid var(--border); margin-top: 16px; }
+  footer a { color: var(--blue); text-decoration: none; }
 </style>
 </head>
 <body>
 
-<!-- ── Login ─────────────────────────────────────────────────────────────── -->
+<!-- ── Login ── -->
 <div id="login-screen">
   <div class="login-box">
     <h2>🐛 ISOBMFF Fuzzer</h2>
@@ -175,181 +226,76 @@
   </div>
 </div>
 
-<!-- ── App ───────────────────────────────────────────────────────────────── -->
+<!-- ── App ── -->
 <div id="app">
+
   <header>
     <h1>🐛 ISOBMFF <span>AFL++</span></h1>
     <span id="header-status" class="badge badge-muted">–</span>
     <div class="spacer"></div>
-    <div id="header-live">
-      <span class="pulse off" id="pulse-dot"></span>
-      <span id="header-live-text">–</span>
-    </div>
-    <span id="header-time" style="font-size:0.72rem;color:var(--muted);margin-left:16px">–</span>
+    <span class="pulse off" id="pulse-dot"></span>
+    <span id="header-live-text" style="font-size:.75rem;color:var(--muted)">–</span>
+    <span id="header-refresh" style="margin-left:14px">–</span>
   </header>
 
   <main>
 
-    <!-- ── Live Banner ──────────────────────────────────────────────────── -->
-    <div id="live-banner">
-      <div class="live-header">
-        <span class="pulse" id="live-pulse"></span>
-        <strong>Live Run</strong>
-        <span class="elapsed" id="live-elapsed">–</span>
-        <span class="run-id" id="live-run-id">–</span>
+    <!-- ── Combined totals ── -->
+    <div id="totals-bar">
+      <div class="total-item">
+        <div class="total-label">Total Execs/s</div>
+        <div class="total-val" id="tot-speed" style="color:var(--orange)">–</div>
       </div>
-      <div class="live-grid">
-        <div class="live-metric">
-          <div class="lm-label">Edges Found</div>
-          <div class="lm-val" id="lv-edges" style="color:var(--green)">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">Bitmap Cvg <span class="help" title="% of AFL++ 64KB edge bitmap populated. Not the same as source-line coverage.">?</span></div>
-          <div class="lm-val" id="lv-bitmap" style="color:var(--cyan)">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">Exec / s</div>
-          <div class="lm-val" id="lv-speed" style="color:var(--orange)">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">Execs Done</div>
-          <div class="lm-val" id="lv-execs">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">Corpus</div>
-          <div class="lm-val" id="lv-corpus" style="color:var(--blue)">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">New Inputs</div>
-          <div class="lm-val" id="lv-found" style="color:var(--purple)">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">Cycles Done</div>
-          <div class="lm-val" id="lv-cycles">–</div>
-        </div>
-        <div class="live-metric">
-          <div class="lm-label">Crashes</div>
-          <div class="lm-val" id="lv-crashes" style="color:var(--red)">–</div>
-        </div>
+      <div class="total-item">
+        <div class="total-label">Max Edges</div>
+        <div class="total-val" id="tot-edges" style="color:var(--green)">–</div>
+      </div>
+      <div class="total-item">
+        <div class="total-label">Bitmap Cvg <span class="help" title="% of AFL++ 64KB edge bitmap used. Not the same as source-line coverage.">?</span></div>
+        <div class="total-val" id="tot-bitmap" style="color:var(--cyan)">–</div>
+      </div>
+      <div class="total-item">
+        <div class="total-label">Total Instances</div>
+        <div class="total-val" id="tot-instances" style="color:var(--blue)">–</div>
+      </div>
+      <div class="total-item">
+        <div class="total-label">Corpus</div>
+        <div class="total-val" id="tot-corpus" style="color:var(--purple)">–</div>
+      </div>
+      <div class="total-item">
+        <div class="total-label">Total Execs</div>
+        <div class="total-val" id="tot-execs" style="color:var(--muted)">–</div>
+      </div>
+      <div class="total-item">
+        <div class="total-label">Crashes</div>
+        <div class="total-val" id="tot-crashes" style="color:var(--red)">–</div>
       </div>
     </div>
 
-    <!-- ── Summary Cards ────────────────────────────────────────────────── -->
-    <div class="cards" id="summary-cards">
-      <div class="card">
-        <div class="card-label">Status</div>
-        <div class="card-value" id="c-status" style="font-size:1rem;padding-top:4px">–</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Best Edge Coverage <span class="help" title="Unique (src→dst) code edges discovered across all runs">?</span></div>
-        <div class="card-value" id="c-edges" style="color:var(--green)">–</div>
-        <div class="card-sub" id="c-bitmap">–</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Total Runs</div>
-        <div class="card-value" id="c-runs" style="color:var(--blue)">–</div>
-        <div class="card-sub" id="c-runs-sub">–</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Avg Speed</div>
-        <div class="card-value" id="c-speed" style="color:var(--orange)">–</div>
-        <div class="card-sub">exec/s</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Corpus Size</div>
-        <div class="card-value" id="c-corpus" style="color:var(--cyan)">–</div>
-        <div class="card-sub" id="c-corpus-sub">–</div>
-      </div>
-      <div class="card">
-        <div class="card-label">New Inputs Found</div>
-        <div class="card-value" id="c-found" style="color:var(--purple)">–</div>
-        <div class="card-sub">cumulative</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Crashes</div>
-        <div class="card-value" id="c-crashes" style="color:var(--red)">–</div>
-        <div class="card-sub" id="c-crashes-sub">–</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Best Score</div>
-        <div class="card-value" id="c-score" style="color:var(--purple)">–</div>
-        <div class="card-sub" style="font-size:0.65rem">edges×5 + crash×200 + new×20 + speed÷10</div>
-      </div>
+    <!-- ── Machine cards ── -->
+    <div class="machines-row" id="machines-row">
+      <!-- populated by JS -->
     </div>
 
-    <!-- ── mp4gen Stats Panel ────────────────────────────────────────────── -->
-    <div class="panel" id="mp4gen-panel" style="margin-bottom:1.2rem">
-      <div class="panel-header">
-        <span class="ph-icon">🎬</span> MP4 Corpus Generator (mp4gen)
-        <span class="ph-sub" id="mp4gen-status">loading…</span>
-      </div>
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;padding:0.5rem 0.2rem 0.2rem">
-        <!-- stat boxes -->
-        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
-          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">GENERATED</div>
-          <div id="mp4gen-generated" style="font-size:1.6rem;font-weight:700;color:var(--cyan)">–</div>
-          <div style="font-size:0.65rem;color:var(--fg2)">total MP4 files</div>
-        </div>
-        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
-          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">SURVIVED CMIN</div>
-          <div id="mp4gen-cmin" style="font-size:1.6rem;font-weight:700;color:var(--orange)">–</div>
-          <div id="mp4gen-cmin-pct" style="font-size:0.65rem;color:var(--fg2)">unique coverage</div>
-        </div>
-        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
-          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">CONTRIBUTED</div>
-          <div id="mp4gen-contributed" style="font-size:1.6rem;font-weight:700;color:var(--green)">–</div>
-          <div id="mp4gen-contributed-pct" style="font-size:0.65rem;color:var(--fg2)">new edges vs corpus</div>
-        </div>
-        <div style="flex:1;min-width:120px;background:var(--bg2);border-radius:6px;padding:0.8rem;text-align:center">
-          <div style="font-size:0.7rem;color:var(--fg2);margin-bottom:4px">BATCHES</div>
-          <div id="mp4gen-batches" style="font-size:1.6rem;font-weight:700;color:var(--purple)">–</div>
-          <div id="mp4gen-last-batch" style="font-size:0.65rem;color:var(--fg2)">completed</div>
-        </div>
-      </div>
-      <!-- Progress bars -->
-      <div style="padding:0.4rem 0.2rem 0.6rem;display:flex;flex-direction:column;gap:6px">
-        <div>
-          <div style="font-size:0.65rem;color:var(--fg2);margin-bottom:2px">cmin survival rate</div>
-          <div style="background:var(--bg2);border-radius:3px;height:8px;overflow:hidden">
-            <div id="bar-cmin" style="height:100%;background:var(--orange);width:0%;transition:width 0.5s"></div>
-          </div>
-        </div>
-        <div>
-          <div style="font-size:0.65rem;color:var(--fg2);margin-bottom:2px">contribution rate (new coverage vs cmin)</div>
-          <div style="background:var(--bg2);border-radius:3px;height:8px;overflow:hidden">
-            <div id="bar-contributed" style="height:100%;background:var(--green);width:0%;transition:width 0.5s"></div>
-          </div>
-        </div>
-      </div>
-      <!-- Live progress line -->
-      <div id="mp4gen-live" style="font-size:0.7rem;color:var(--fg2);padding:0.2rem 0.2rem 0;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-      <!-- Batch history mini-table -->
-      <div id="mp4gen-history" style="font-size:0.72rem;color:var(--fg2);padding:0.3rem 0.2rem 0.2rem"></div>
-    </div>
-
-    <!-- ── Charts row ────────────────────────────────────────────────────── -->
-    <div class="two-col">
+    <!-- ── Charts ── -->
+    <div class="charts-row">
       <div class="panel">
         <div class="panel-header">
-          <span class="ph-icon">📈</span> Edge Coverage Over Time
+          📈 Edge Coverage Over Time
           <span class="ph-sub" id="timeline-count">–</span>
         </div>
-        <div class="chart-wrap">
-          <canvas id="chart-edges"></canvas>
-        </div>
+        <div class="chart-wrap"><canvas id="chart-edges"></canvas></div>
       </div>
       <div class="panel">
         <div class="panel-header">
-          <span class="ph-icon">⚡</span> Exec Speed Over Time
+          ⚡ Exec Speed Over Time
           <span class="ph-sub">exec/s per run</span>
         </div>
-        <div class="chart-wrap">
-          <canvas id="chart-speed"></canvas>
-        </div>
+        <div class="chart-wrap"><canvas id="chart-speed"></canvas></div>
       </div>
     </div>
 
-    <!-- ── Tabs: Runs / Crashes ──────────────────────────────────────────── -->
+    <!-- ── Tabs ── -->
     <div class="panel">
       <div class="tabs">
         <div class="tab active" onclick="switchTab('runs')">Runs</div>
@@ -357,140 +303,59 @@
         <div class="tab" onclick="switchTab('info')">Coverage Info</div>
       </div>
 
-      <!-- Runs tab -->
+      <!-- Runs -->
       <div class="tab-pane active" id="tab-runs">
         <div style="overflow-x:auto">
           <table>
-            <thead>
-              <tr>
-                <th>Run ID</th>
-                <th>Edges</th>
-                <th>Bitmap %</th>
-                <th>New</th>
-                <th>Crashes</th>
-                <th>Speed</th>
-                <th>Duration</th>
-                <th>Score</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="runs-tbody">
-              <tr><td colspan="9" class="empty">Loading…</td></tr>
-            </tbody>
+            <thead><tr>
+              <th>Run ID</th><th>Edges</th><th>Bitmap %</th>
+              <th>New</th><th>Crashes</th><th>Speed</th>
+              <th>Duration</th><th>Score</th><th>Status</th>
+            </tr></thead>
+            <tbody id="runs-tbody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Crashes tab -->
+      <!-- Crashes -->
       <div class="tab-pane" id="tab-crashes">
         <div style="overflow-x:auto">
           <table>
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>Type</th>
-                <th>Severity</th>
-                <th>Hash</th>
-                <th>Size</th>
-                <th>Run</th>
-              </tr>
-            </thead>
-            <tbody id="crashes-tbody">
-              <tr><td colspan="6" class="empty">No crashes yet</td></tr>
-            </tbody>
+            <thead><tr>
+              <th>File</th><th>Type</th><th>Severity</th>
+              <th>Hash</th><th>Size</th><th>Run</th>
+            </tr></thead>
+            <tbody id="crashes-tbody"><tr><td colspan="6" class="empty">No crashes yet</td></tr></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Info tab -->
+      <!-- Info -->
       <div class="tab-pane" id="tab-info">
         <div style="padding: 20px 24px; max-width: 700px; line-height: 1.7; font-size: 0.85rem;">
-          <h3 style="margin-bottom: 12px; color: var(--blue);">AFL++ Coverage Metrics Explained</h3>
-
-          <p style="margin-bottom: 12px;"><strong style="color:var(--green)">Edges Found</strong> — The number of unique control-flow edges (source block → destination block pairs) discovered. This is the primary coverage metric in AFL++. More edges = deeper code exploration. ISOBMFF has roughly 10,000–20,000 reachable edges.</p>
-
-          <p style="margin-bottom: 12px;"><strong style="color:var(--cyan)">Bitmap Coverage %</strong> — AFL++ uses a 64KB (65,536-bucket) hash map to track edges. This percentage shows how much of that hash map is populated. <em>This is NOT the same as source-line coverage.</em> Because the hash map uses 65,536 buckets but real programs have far fewer edges, a value of 10–40% is completely normal and can represent very good coverage. Two different edges can hash to the same bucket (alias), so high bitmap% doesn't mean all code was reached.</p>
-
-          <p style="margin-bottom: 12px;"><strong style="color:var(--orange)">Exec/s</strong> — How many test cases AFL++ runs per second. Higher is better. ISOBMFF writes to /dev/shm (RAM) to avoid disk I/O, so ~200–800 exec/s is typical. Lower values mean ISOBMFF is spending more time on complex inputs.</p>
-
-          <p style="margin-bottom: 12px;"><strong style="color:var(--purple)">Corpus</strong> — The current set of inputs kept by AFL++ because they triggered new coverage. Starts from 368 seed files (minimized from 157,872 libFuzzer corpus via afl-cmin). Grows as new interesting inputs are discovered.</p>
-
-          <p style="margin-bottom: 12px;"><strong style="color:var(--blue)">Cycles Done</strong> — How many times AFL++ has cycled through its entire corpus. Low cycle count (0–2) means AFL++ is still in the initial exploration phase. Higher cycles mean the fuzzer is in a "maintenance" mode, revisiting known inputs with mutations.</p>
-
-          <p style="margin-bottom: 0;"><strong>For source-line coverage</strong> (like libFuzzer's HTML reports), run <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">make coverage</code> inside the fuzzer container. This runs the AFL++ corpus through a libFuzzer-instrumented build and generates an HTML line-by-line report.</p>
+          <h3 style="margin-bottom:12px;color:var(--blue)">AFL++ Coverage Metrics</h3>
+          <p style="margin-bottom:12px"><strong style="color:var(--green)">Edges Found</strong> — Unique control-flow edges (src→dst pairs) discovered. Primary coverage metric. More = deeper code exploration.</p>
+          <p style="margin-bottom:12px"><strong style="color:var(--cyan)">Bitmap Coverage %</strong> — AFL++ uses a 64KB (65,536-bucket) hash map. NOT the same as source-line coverage. 10–50% is normal and can represent excellent coverage.</p>
+          <p style="margin-bottom:12px"><strong style="color:var(--orange)">Exec/s</strong> — Test cases per second. CMPLOG halves this (runs each input twice). 30–100/s with CMPLOG + complex MP4 inputs is expected.</p>
+          <p style="margin-bottom:12px"><strong style="color:var(--purple)">Architecture</strong> — Local (controller, 2 instances) syncs corpus with Powerhorse (28 instances). AFL++ auto-imports sibling queue dirs, so findings are shared both ways in real time.</p>
+          <p style="margin-bottom:0"><strong>Source-line coverage:</strong> run <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">make coverage</code> inside the fuzzer container. Generates HTML report via llvm-cov.</p>
         </div>
       </div>
     </div>
 
-  <!-- ── Workers panel ───────────────────────────────────────────────────── -->
-  <main style="padding-top:0">
-    <div class="panel" id="workers-panel" style="margin-bottom:1.2rem">
-      <div class="panel-header">
-        <span class="ph-icon">⚙️</span> AFL Instances — Distributed
-        <span class="ph-sub" id="workers-run-id">–</span>
-        <span style="margin-left:auto;font-size:.75rem;color:var(--muted)" id="workers-summary"></span>
-      </div>
-      <div class="panel-body" style="padding:12px">
-        <div style="overflow-x:auto">
-          <table id="workers-table">
-            <thead>
-              <tr>
-                <th>Instance</th>
-                <th>Role</th>
-                <th>Edges</th>
-                <th>Corpus</th>
-                <th>Pending</th>
-                <th>Execs/s</th>
-                <th>Total Execs</th>
-                <th>Crashes</th>
-                <th>Cycles</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="workers-tbody">
-              <tr><td colspan="10" class="empty">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <!-- Sync worker pings -->
-        <div id="sync-workers-section" style="margin-top:12px;display:none">
-          <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">
-            Remote Workers (sync)
-          </div>
-          <div id="sync-workers-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px"></div>
-        </div>
-      </div>
-    </div>
   </main>
 
-  <!-- ── Machines panel ──────────────────────────────────────────────────── -->
-  <main style="padding-top:0">
-    <div class="panel" id="machines-panel" style="margin-bottom:1.2rem">
-      <div class="panel-header">
-        <span class="ph-icon">🖥️</span> All Machines
-        <span class="ph-sub" id="machines-updated">–</span>
-      </div>
-      <div class="panel-body" style="padding:12px">
-        <div id="machines-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
-          <div style="color:var(--muted);font-size:.85rem">Loading machines…</div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  </main>
   <footer>
-    ISOBMFF AFL++ Fuzzer · Auto-refresh every 15s · Live stats every 5s ·
-    <a href="#" onclick="doRescan()" style="color:var(--blue);text-decoration:none">Rescan</a> ·
-    <a href="/auth/logout" style="color:var(--muted);text-decoration:none">Logout</a>
+    ISOBMFF AFL++ · Auto-refresh 15s · Live 5s ·
+    <a href="#" onclick="doRescan()">Rescan</a> ·
+    <a href="/auth/logout">Logout</a>
   </footer>
 </div>
 
 <script>
-const API = '';
-let chartEdges = null;
-let chartSpeed = null;
-let bestEdgesEver = 0;
+// ── State ──────────────────────────────────────────────────────────────────────
+let chartEdges = null, chartSpeed = null;
+let machineState = {}; // name → machine data
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 async function doLogin() {
@@ -502,46 +367,47 @@ async function doLogin() {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: `password=${encodeURIComponent(pw)}`,
-      credentials: 'include',
-      redirect: 'manual',
+      credentials: 'include', redirect: 'manual',
     });
     if (r.ok || r.type === 'opaqueredirect' || r.status === 200 || r.status === 302) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      initCharts();
-      refresh();
-      loadLive();
-    } else {
-      err.textContent = 'Wrong password.';
-    }
-  } catch(e) {
-    // Try to load app anyway (might already be authed)
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    initCharts();
-    refresh();
-    loadLive();
-  }
+      bootApp();
+    } else { err.textContent = 'Wrong password.'; }
+  } catch(e) { bootApp(); }
 }
-document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
 
-// Auto-check session on load
 (async () => {
   try {
     const r = await fetch('/api/stats', { credentials: 'include' });
-    if (r.ok) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      initCharts();
-      refresh();
-      loadLive();
-    }
+    if (r.ok) bootApp();
   } catch(e) {}
 })();
 
+function bootApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initCharts();
+  refresh();
+  loadLive();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = n => {
+  n = n || 0;
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return String(Math.round(n));
+};
+const fmtDur = sec => {
+  if (!sec) return '–';
+  if (sec >= 3600) return `${Math.floor(sec/3600)}h${Math.floor((sec%3600)/60)}m`;
+  if (sec >= 60)   return `${Math.floor(sec/60)}m${sec%60}s`;
+  return `${sec}s`;
+};
+
 // ── Charts ────────────────────────────────────────────────────────────────────
 function initCharts() {
-  const baseOpts = {
+  const base = {
     responsive: true, maintainAspectRatio: false,
     animation: { duration: 300 },
     plugins: { legend: { display: false } },
@@ -550,220 +416,289 @@ function initCharts() {
       y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#7d8590', font: { size: 10 } } }
     }
   };
-
   chartEdges = new Chart(document.getElementById('chart-edges').getContext('2d'), {
     type: 'line',
     data: { labels: [], datasets: [{
       data: [], borderColor: '#3fb950', backgroundColor: 'rgba(63,185,80,.08)',
       borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0,
     }]},
-    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0 } } }
+    options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, min: 0 } } }
   });
-
   chartSpeed = new Chart(document.getElementById('chart-speed').getContext('2d'), {
     type: 'bar',
     data: { labels: [], datasets: [{
       data: [], backgroundColor: 'rgba(227,179,65,.5)', borderColor: '#e3b341',
       borderWidth: 1, borderRadius: 2,
     }]},
-    options: { ...baseOpts }
+    options: { ...base }
   });
 }
 
-// ── Live stats (every 5s) ─────────────────────────────────────────────────────
+// ── Machine cards ──────────────────────────────────────────────────────────────
+function renderMachines(machines) {
+  const row = document.getElementById('machines-row');
+  if (!machines || !machines.length) return;
+
+  // Store for totals
+  machineState = {};
+  machines.forEach(m => { machineState[m.name] = m; });
+
+  // Combined totals
+  const totalSpeed   = machines.reduce((s, m) => s + (m.execs_per_sec || 0), 0);
+  const maxEdges     = Math.max(...machines.map(m => m.edges_found || 0));
+  const totalInst    = machines.reduce((s, m) => s + (m.instances || 0), 0);
+  const totalCorpus  = Math.max(...machines.map(m => m.corpus_count || 0));
+  const totalExecs   = machines.reduce((s, m) => s + (m.execs_done || 0), 0);
+  const totalCrashes = machines.reduce((s, m) => s + (m.total_crashes || 0), 0);
+
+  // Bitmap from local live
+  const localM = machines.find(m => m.is_local) || machines[0];
+  const bitmap = (localM.live || {}).bitmap_cvg || 0;
+
+  document.getElementById('tot-speed').textContent    = fmt(Math.round(totalSpeed)) + '/s';
+  document.getElementById('tot-edges').textContent    = maxEdges.toLocaleString();
+  document.getElementById('tot-bitmap').textContent   = bitmap.toFixed(1) + '%';
+  document.getElementById('tot-instances').textContent= totalInst;
+  document.getElementById('tot-corpus').textContent   = fmt(totalCorpus);
+  document.getElementById('tot-execs').textContent    = fmt(totalExecs);
+  document.getElementById('tot-crashes').textContent  = totalCrashes || '0';
+
+  // Header
+  const pulse = document.getElementById('pulse-dot');
+  const ltext = document.getElementById('header-live-text');
+  const statusBadge = document.getElementById('header-status');
+  const anyAlive = machines.some(m => m.alive);
+  if (anyAlive) {
+    pulse.classList.remove('off');
+    ltext.textContent = `${fmt(Math.round(totalSpeed))}/s · ${maxEdges.toLocaleString()} edges`;
+    statusBadge.textContent = `${totalInst} instances running`;
+    statusBadge.className = 'badge badge-green';
+  } else {
+    pulse.classList.add('off');
+    ltext.textContent = 'idle';
+    statusBadge.textContent = 'idle';
+    statusBadge.className = 'badge badge-muted';
+  }
+
+  row.innerHTML = machines.map(m => renderMachineCard(m)).join('');
+}
+
+function renderMachineCard(m) {
+  const isLocal   = m.is_local || m.url === 'local';
+  const alive     = m.alive;
+  const live      = m.live || {};
+  const aliveClass= alive ? 'alive' : 'dead';
+  const statusDot = alive ? '🟢' : '🔴';
+  const role      = isLocal ? 'Controller · 2 AFL instances' : `Worker · ${m.instances || '?'} AFL instances`;
+  const roleIcon  = isLocal ? '⬡' : '⬢';
+  const roleColor = isLocal ? 'var(--orange)' : 'var(--purple)';
+
+  const edges      = live.edges_found   || m.edges_found   || m.max_edges  || 0;
+  const speed      = live.execs_per_sec || m.execs_per_sec || 0;
+  const corpus     = live.corpus_count  || m.corpus_count  || 0;
+  const instances  = live.instances     || m.instances     || 0;
+  const execs      = live.execs_done    || m.execs_done    || 0;
+  const crashes    = live.saved_crashes || m.total_crashes  || 0;
+  const bitmap     = live.bitmap_cvg    || 0;
+  const elapsed    = live.elapsed_sec   || 0;
+
+  const instList   = m.instance_list || [];
+
+  const openLink = !isLocal && m.url
+    ? `<a href="${m.url}" target="_blank" style="font-size:.7rem;color:var(--blue);text-decoration:none;margin-left:8px">open ↗</a>`
+    : '';
+
+  const instancesHtml = instList.length > 0
+    ? instList.map(i => {
+        const roleLabel = i.name === 'ph_1' || i.name === 'main'
+          ? `<span class="inst-role-main">MAIN</span>`
+          : `<span class="inst-role-work">WORK</span>`;
+        return `<div class="inst-row">
+          <div class="inst-name">${i.name}</div>
+          ${roleLabel}
+          <div class="inst-metric" style="margin-left:8px">
+            <span style="color:var(--green)">${(i.edges||0).toLocaleString()}</span> edges
+          </div>
+          <div class="inst-spacer"></div>
+          <div class="inst-metric"><span>${i.speed ? i.speed.toFixed(1) : '–'}</span>/s</div>
+          <div class="inst-alive-dot on" style="margin-left:8px"></div>
+        </div>`;
+      }).join('')
+    : (alive ? `<div style="padding:10px 14px;font-size:.75rem;color:var(--muted)">Instance data loading…</div>` : '');
+
+  const instSection = instList.length > 0
+    ? `<div class="mc-instances">${instancesHtml}</div>`
+    : '';
+
+  return `
+  <div class="machine-card ${aliveClass}">
+    <div class="mc-header">
+      <span style="font-size:1.1rem">${statusDot}</span>
+      <div>
+        <div class="mc-title">${m.name.toUpperCase()}</div>
+        <div class="mc-role" style="color:${roleColor}">${roleIcon} ${role}</div>
+      </div>
+      <div class="mc-badge" style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        ${elapsed > 0 ? `<span style="font-size:.7rem;color:var(--muted)">up ${fmtDur(elapsed)}</span>` : ''}
+        ${openLink}
+      </div>
+    </div>
+    <div class="mc-stats">
+      <div class="mc-stat">
+        <div class="mc-stat-label">Execs/s</div>
+        <div class="mc-stat-val" style="color:var(--orange)">${fmt(Math.round(speed))}</div>
+        <div class="mc-stat-sub">per second</div>
+      </div>
+      <div class="mc-stat">
+        <div class="mc-stat-label">Edges Found</div>
+        <div class="mc-stat-val" style="color:var(--green)">${edges.toLocaleString()}</div>
+        ${bitmap > 0 ? `<div class="mc-stat-sub">${bitmap.toFixed(1)}% bitmap</div>` : '<div class="mc-stat-sub">–</div>'}
+      </div>
+      <div class="mc-stat">
+        <div class="mc-stat-label">Instances</div>
+        <div class="mc-stat-val" style="color:var(--blue)">${instances}</div>
+        <div class="mc-stat-sub">AFL workers</div>
+      </div>
+      <div class="mc-stat">
+        <div class="mc-stat-label">Corpus</div>
+        <div class="mc-stat-val" style="color:var(--purple)">${fmt(corpus)}</div>
+        <div class="mc-stat-sub">queue entries</div>
+      </div>
+      <div class="mc-stat">
+        <div class="mc-stat-label">Total Execs</div>
+        <div class="mc-stat-val">${fmt(execs)}</div>
+        <div class="mc-stat-sub">executions</div>
+      </div>
+      <div class="mc-stat">
+        <div class="mc-stat-label">Crashes</div>
+        <div class="mc-stat-val" style="color:${crashes > 0 ? 'var(--red)' : 'var(--text)'}">${crashes}</div>
+        <div class="mc-stat-sub">saved</div>
+      </div>
+    </div>
+    ${instSection}
+  </div>`;
+}
+
+// ── Live (every 5s): fetch local /api/live for real-time banner ───────────────
 async function loadLive() {
   try {
     const d = await fetch('/api/live', { credentials: 'include' }).then(r => r.json()).catch(() => null);
-    const banner = document.getElementById('live-banner');
-    const pulse  = document.getElementById('pulse-dot');
-    const ltext  = document.getElementById('header-live-text');
-
-    if (!d || !d.running || d.stale) {
-      banner.classList.remove('active');
-      pulse.classList.add('off');
-      ltext.textContent = 'idle';
-      return;
+    if (!d || !d.running) return;
+    // Update local machine in state if available
+    if (machineState['local']) {
+      machineState['local'].live = d;
     }
-
-    banner.classList.add('active');
-    pulse.classList.remove('off');
-
-    const fmt = n => (n||0).toLocaleString();
-    const fmtMs = sec => {
-      const m = Math.floor(sec/60), s = sec%60;
-      return m > 0 ? `${m}m ${s}s` : `${s}s`;
-    };
-
-    document.getElementById('live-elapsed').textContent = `elapsed: ${fmtMs(d.elapsed_sec||0)}`;
-    document.getElementById('live-run-id').textContent  = d.run_id || '';
-    document.getElementById('lv-edges').textContent     = fmt(d.edges_found);
-    document.getElementById('lv-bitmap').textContent    = (d.bitmap_cvg||0).toFixed(1) + '%';
-    document.getElementById('lv-speed').textContent     = fmt(Math.round(d.execs_per_sec||0));
-    document.getElementById('lv-execs').textContent     = fmt(d.execs_done);
-    document.getElementById('lv-corpus').textContent    = fmt(d.corpus_count);
-    document.getElementById('lv-found').textContent     = '+' + fmt(d.corpus_found);
-    document.getElementById('lv-cycles').textContent    = fmt(d.cycles_done);
-    document.getElementById('lv-crashes').textContent   = d.saved_crashes || '0';
-
-    ltext.textContent = `${fmt(d.edges_found)} edges · ${(d.bitmap_cvg||0).toFixed(1)}% bitmap`;
   } catch(e) {}
 }
 
-// ── Full refresh (every 15s) ──────────────────────────────────────────────────
+// ── Full refresh (15s) ────────────────────────────────────────────────────────
 async function refresh() {
-  await Promise.all([loadStats(), loadTimeline(), loadRuns(), loadCrashes()]);
-  document.getElementById('header-time').textContent = '↺ ' + new Date().toLocaleTimeString();
+  await Promise.all([
+    loadMachines(),
+    loadTimeline(),
+    loadRuns(),
+    loadCrashes(),
+  ]);
+  document.getElementById('header-refresh').textContent = '↺ ' + new Date().toLocaleTimeString();
 }
 
-async function loadStats() {
-  const s = await fetch('/api/stats', { credentials: 'include' }).then(r => r.json()).catch(() => null);
-  if (!s) return;
+// ── Machines ──────────────────────────────────────────────────────────────────
+async function loadMachines() {
+  try {
+    const machines = await fetch('/api/machines', { credentials: 'include' }).then(r => r.json()).catch(() => null);
+    if (!machines) return;
 
-  const running = s.running > 0;
-  const statusEl = document.getElementById('header-status');
-  statusEl.textContent = running ? `Running (${s.running})` : s.fuzzer_container || 'stopped';
-  statusEl.className = 'badge ' + (running ? 'badge-green' : 'badge-muted');
+    // For powerhorse: fetch its instance list via proxy
+    for (const m of machines) {
+      if (!m.is_local && m.alive) {
+        try {
+          const live = await fetch(`/api/machines/${m.name}/live`, { credentials: 'include' }).then(r => r.json()).catch(() => null);
+          if (live && live.instance_list) {
+            m.instance_list = live.instance_list;
+            m.live = { ...m.live, ...live };
+          }
+        } catch(e) {}
+      }
+    }
 
-  document.getElementById('c-status').innerHTML = running
-    ? `<span style="color:var(--green)">🟢 Running</span>`
-    : `<span style="color:var(--muted)">⚫ Idle</span>`;
-
-  const bestEdges = s.best_edges || 0;
-  bestEdgesEver = Math.max(bestEdgesEver, bestEdges);
-  document.getElementById('c-edges').textContent = bestEdges.toLocaleString();
-  document.getElementById('c-bitmap').textContent = `best bitmap: ${(s.best_coverage_pct||0).toFixed(1)}%`;
-
-  document.getElementById('c-runs').textContent = (s.total_runs||0).toLocaleString();
-  document.getElementById('c-runs-sub').textContent = `${s.total_runs||0} completed`;
-
-  document.getElementById('c-speed').textContent = Math.round(s.avg_execs_per_sec||0).toLocaleString();
-
-  const cl = s.corpus_live || 0;
-  const cq = s.corpus_queue || 0;
-  document.getElementById('c-corpus').textContent = (cl || cq || s.corpus_seeds || 0).toLocaleString();
-  document.getElementById('c-corpus-sub').textContent = cl ? `live queue` : cq ? `last queue` : `seeds`;
-
-  document.getElementById('c-found').textContent = (s.corpus_found_cumulative||0).toLocaleString();
-
-  document.getElementById('c-crashes').textContent = s.total_crashes || '0';
-  document.getElementById('c-crashes-sub').textContent = `${s.unique_crashes||0} unique`;
-
-  document.getElementById('c-score').textContent = (s.best_score||0).toLocaleString();
+    renderMachines(machines);
+  } catch(e) { console.warn('machines:', e); }
 }
 
+// ── Timeline ──────────────────────────────────────────────────────────────────
 async function loadTimeline() {
   const rows = await fetch('/api/coverage/timeline', { credentials: 'include' }).then(r => r.json()).catch(() => []);
   if (!rows.length) return;
-
   document.getElementById('timeline-count').textContent = `${rows.length} runs`;
-
   const labels = rows.map((r, i) => i % Math.ceil(rows.length/10) === 0 ? r.run_id.slice(9,17) : '');
-  const edges  = rows.map(r => r.cov_edges || 0);
-  const speeds = rows.map(r => r.execs_per_sec || 0);
-
-  if (chartEdges) {
-    chartEdges.data.labels = labels;
-    chartEdges.data.datasets[0].data = edges;
-    chartEdges.update('none');
-  }
-  if (chartSpeed) {
-    chartSpeed.data.labels = labels;
-    chartSpeed.data.datasets[0].data = speeds;
-    chartSpeed.update('none');
-  }
+  if (chartEdges) { chartEdges.data.labels = labels; chartEdges.data.datasets[0].data = rows.map(r => r.cov_edges||0); chartEdges.update('none'); }
+  if (chartSpeed) { chartSpeed.data.labels = labels; chartSpeed.data.datasets[0].data = rows.map(r => r.execs_per_sec||0); chartSpeed.update('none'); }
 }
 
+// ── Runs ──────────────────────────────────────────────────────────────────────
 async function loadRuns() {
   const d    = await fetch('/api/runs?limit=100&sort=started_at', { credentials: 'include' }).then(r => r.json()).catch(() => ({ runs: [] }));
-  const live = await fetch('/api/live',  { credentials: 'include' }).then(r => r.json()).catch(() => null);
+  const live = await fetch('/api/live', { credentials: 'include' }).then(r => r.json()).catch(() => null);
   const tbody = document.getElementById('runs-tbody');
-
-  let runs = (d.runs || []).slice().reverse(); // most recent first
-
-  // Inject the currently-running campaign at the top (if not already in DB)
+  let runs = (d.runs || []).slice().reverse();
   if (live && live.running && live.run_id && !runs.find(r => r.run_id === live.run_id)) {
-    runs.unshift({
-      run_id: live.run_id,
-      status: 'running',
-      started_at: null,
-      duration_sec: live.elapsed_sec || 0,
-      crashes: live.saved_crashes || 0,
-      cov_edges: live.edges_found || 0,
-      cov_lines_pct: live.bitmap_cvg || 0,
-      corpus_found: live.corpus_found || 0,
-      execs_per_sec: live.execs_per_sec || 0,
-      score: null,
-      _live: true,
-    });
+    runs.unshift({ run_id: live.run_id, status: 'running', duration_sec: live.elapsed_sec||0,
+      crashes: live.saved_crashes||0, cov_edges: live.edges_found||0,
+      cov_lines_pct: live.bitmap_cvg||0, corpus_found: live.corpus_found||0,
+      execs_per_sec: live.execs_per_sec||0, score: null, _live: true });
   }
-
-  if (!runs.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty">No completed runs yet</td></tr>';
-    return;
-  }
-
-  const maxScore = Math.max(...runs.map(r => r.score || 0), 1);
-
+  if (!runs.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">No runs yet</td></tr>'; return; }
+  const maxScore = Math.max(...runs.map(r => r.score||0), 1);
   tbody.innerHTML = runs.map(r => {
-    const dur = r.duration_sec ? (r.duration_sec >= 60 ? `${Math.floor(r.duration_sec/60)}m${r.duration_sec%60}s` : `${r.duration_sec}s`) : '–';
-    const statusColor = r.status === 'done' ? 'var(--green)' : r.status === 'running' ? 'var(--orange)' : 'var(--muted)';
-    const barW = Math.round((r.score||0)/maxScore*100);
-    const rowBg = r._live ? 'background:rgba(255,165,0,.06)' : '';
-    const liveTag = r._live ? ' <span style="font-size:.6rem;background:var(--orange);color:#000;padding:1px 4px;border-radius:3px;vertical-align:middle">LIVE</span>' : '';
-    // hide interrupted+0-edge rows (failed runs) - still show if edges > 0
     if (r.status === 'interrupted' && !r.cov_edges) return '';
-    return `<tr style="${rowBg}">
-      <td class="mono" style="font-size:0.72rem">${r.run_id}${liveTag}</td>
+    const dur = fmtDur(r.duration_sec);
+    const sc  = r.score != null
+      ? `<div style="color:var(--purple);font-size:.75rem;font-weight:600">${(r.score||0).toLocaleString()}</div>
+         <div class="score-bar"><div class="score-bar-fill" style="width:${Math.round((r.score||0)/maxScore*100)}%"></div></div>`
+      : `<span style="color:var(--muted);font-size:.7rem">–</span>`;
+    const statusColor = r.status==='done' ? 'var(--green)' : r.status==='running' ? 'var(--orange)' : 'var(--muted)';
+    const liveTag = r._live ? ' <span style="font-size:.6rem;background:var(--orange);color:#000;padding:1px 4px;border-radius:3px">LIVE</span>' : '';
+    return `<tr style="${r._live ? 'background:rgba(255,165,0,.04)' : ''}">
+      <td class="mono" style="font-size:.72rem">${r.run_id}${liveTag}</td>
       <td style="color:var(--green);font-weight:600">${(r.cov_edges||0).toLocaleString()}</td>
       <td style="color:var(--cyan)">${(r.cov_lines_pct||0).toFixed(1)}%</td>
-      <td style="color:var(--purple)">${r.corpus_found > 0 ? '+' + r.corpus_found : '–'}</td>
+      <td style="color:var(--purple)">${r.corpus_found > 0 ? '+'+r.corpus_found : '–'}</td>
       <td style="color:var(--red)">${r.crashes > 0 ? r.crashes : '–'}</td>
       <td style="color:var(--orange)">${(r.execs_per_sec||0).toLocaleString()}</td>
       <td style="color:var(--muted)">${dur}</td>
-      <td>
-        ${r.score != null
-          ? `<div style="color:var(--purple);font-size:0.75rem;font-weight:600">${(r.score||0).toLocaleString()}</div>
-             <div class="score-bar"><div class="score-bar-fill" style="width:${barW}%"></div></div>`
-          : `<span style="color:var(--muted);font-size:.7rem">–</span>`}
-      </td>
-      <td><span style="color:${statusColor};font-size:0.72rem">${r.status}</span></td>
+      <td>${sc}</td>
+      <td><span style="color:${statusColor};font-size:.72rem">${r.status}</span></td>
     </tr>`;
   }).join('');
 }
 
+// ── Crashes ───────────────────────────────────────────────────────────────────
 async function loadCrashes() {
   const d = await fetch('/api/crashes?limit=100', { credentials: 'include' }).then(r => r.json()).catch(() => ({ crashes: [] }));
-  const crashes = d.crashes || [];
   const tbody = document.getElementById('crashes-tbody');
-
-  if (!crashes.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">No crashes yet 🎉</td></tr>';
-    return;
-  }
-
+  const crashes = d.crashes || [];
+  if (!crashes.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No crashes yet 🎉</td></tr>'; return; }
   tbody.innerHTML = crashes.map(c => {
     const sev = c.severity || 0;
-    const sevClass = sev >= 85 ? 'sev-crit' : sev >= 65 ? 'sev-high' : sev >= 45 ? 'sev-med' : 'sev-low';
-    const sevLabel = sev >= 85 ? 'CRITICAL' : sev >= 65 ? 'HIGH' : sev >= 45 ? 'MEDIUM' : 'LOW';
+    const sevClass = sev>=85?'sev-crit':sev>=65?'sev-high':sev>=45?'sev-med':'sev-low';
+    const sevLabel = sev>=85?'CRITICAL':sev>=65?'HIGH':sev>=45?'MEDIUM':'LOW';
     return `<tr>
-      <td class="mono" style="font-size:0.7rem">${c.crash_file.slice(0, 40)}…</td>
-      <td style="color:var(--orange)">${c.crash_type || 'unknown'}</td>
+      <td class="mono" style="font-size:.7rem">${c.crash_file.slice(0,40)}…</td>
+      <td style="color:var(--orange)">${c.crash_type||'unknown'}</td>
       <td><span class="sev ${sevClass}">${sevLabel} (${sev})</span></td>
-      <td class="mono" style="color:var(--muted);font-size:0.72rem">${c.stack_hash || '–'}</td>
+      <td class="mono" style="color:var(--muted);font-size:.72rem">${c.stack_hash||'–'}</td>
       <td style="color:var(--muted)">${(c.input_size||0).toLocaleString()}B</td>
-      <td class="mono" style="font-size:0.7rem;color:var(--muted)">${(c.run_id||'').slice(0,17)}…</td>
+      <td class="mono" style="font-size:.7rem;color:var(--muted)">${(c.run_id||'').slice(0,17)}…</td>
     </tr>`;
   }).join('');
 }
 
-// ── Tabs ───────────────────────────────────────────────────────────────────────
+// ── Tabs ──────────────────────────────────────────────────────────────────────
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    const names = ['runs','crashes','info'];
-    t.classList.toggle('active', names[i] === name);
-  });
+  const names = ['runs','crashes','info'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
 }
 
 // ── Rescan ────────────────────────────────────────────────────────────────────
@@ -772,241 +707,9 @@ async function doRescan() {
   setTimeout(refresh, 2000);
 }
 
-// ── MP4gen stats ─────────────────────────────────────────────────────────────
-async function loadMp4gen() {
-  try {
-    const r = await fetch('/api/mp4gen', { credentials: 'include' });
-    if (!r.ok) return;
-    const d = await r.json();
-
-    const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-
-    set('mp4gen-generated',  fmt(d.total_generated || 0));
-    set('mp4gen-cmin',       fmt(d.total_cmin || 0));
-    set('mp4gen-cmin-pct',   (d.pct_cmin||0).toFixed(1)+'% survived cmin');
-    set('mp4gen-contributed',fmt(d.total_contributed || 0));
-    set('mp4gen-contributed-pct', (d.total_cmin > 0
-      ? (100*d.total_contributed/d.total_cmin).toFixed(1)
-      : '0.0') + '% of cmin added new edges');
-    set('mp4gen-batches', d.batch_count || 0);
-    set('mp4gen-last-batch', d.last_batch_at
-      ? 'last: '+d.last_batch_at.replace('T',' ')
-      : 'no batches yet');
-
-    const statusEl = document.getElementById('mp4gen-status');
-    if (statusEl) {
-      if (d.running && d.batch_count === 0)
-        statusEl.textContent = '● generating batch #1…';
-      else if (d.running)
-        statusEl.textContent = '● running (batch #' + (d.batch_count+1) + ')';
-      else
-        statusEl.textContent = d.batch_count > 0 ? '○ idle — ' + d.batch_count + ' batches done' : '○ idle';
-      statusEl.style.color = d.running ? 'var(--green)' : 'var(--fg2)';
-    }
-
-    // Live log line
-    const liveEl = document.getElementById('mp4gen-live');
-    if (liveEl && d.last_log_line)
-      liveEl.textContent = '▸ ' + d.last_log_line;
-
-    // Progress bars
-    const barCmin = document.getElementById('bar-cmin');
-    if (barCmin) barCmin.style.width = Math.min(d.pct_cmin||0, 100)+'%';
-    const barCont = document.getElementById('bar-contributed');
-    if (barCont && d.total_cmin > 0)
-      barCont.style.width = Math.min(100*d.total_contributed/d.total_cmin, 100)+'%';
-
-    // Batch history (last 5)
-    const histEl = document.getElementById('mp4gen-history');
-    if (histEl && d.batches && d.batches.length > 0) {
-      const recent = [...d.batches].reverse().slice(0, 5);
-      histEl.innerHTML = '<div style="margin-bottom:4px;font-weight:600">Recent batches:</div>'
-        + '<table style="width:100%;border-collapse:collapse">'
-        + '<tr style="color:var(--fg2)"><td>Batch</td><td>Generated</td><td>→ cmin</td><td>→ Contributed</td><td>Time</td></tr>'
-        + recent.map(b => `<tr>
-            <td>#${b.batch}</td>
-            <td>${fmt(b.generated)}</td>
-            <td>${fmt(b.cmin)} (${b.generated>0?(100*b.cmin/b.generated).toFixed(1):0}%)</td>
-            <td style="color:var(--green)">${fmt(b.contributed)} (${b.cmin>0?(100*b.contributed/b.cmin).toFixed(1):0}%)</td>
-            <td>${b.time_sec}s</td>
-          </tr>`).join('')
-        + '</table>';
-    }
-  } catch(e) {}
-}
-
 // ── Timers ────────────────────────────────────────────────────────────────────
 setInterval(loadLive, 5000);
 setInterval(refresh, 15000);
-setInterval(loadMp4gen, 10000);
-loadMp4gen();
-
-/* ── Machines panel ───────────────────────────────────────────────────── */
-async function loadWorkers() {
-  try {
-    const [workers, syncWorkers] = await Promise.all([
-      fetch('/api/instances',    { credentials: 'include' }).then(r => r.json()).catch(() => []),
-      fetch('/api/sync/workers', { credentials: 'include' }).then(r => r.json()).catch(() => []),
-    ]);
-    const tbody = document.getElementById('workers-tbody');
-    if (!tbody) return;
-
-    const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n||0);
-
-    if (!workers.length) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty">No AFL instances found</td></tr>';
-    } else {
-      const runId = document.getElementById('workers-run-id');
-      if (runId && workers[0]) runId.textContent = workers[0].run_id === 'live' ? '▶ live' : (workers[0].run_id || '–');
-
-      const local  = workers.filter(w => w.role !== 'worker');
-      const remote = workers.filter(w => w.role === 'worker');
-      const totalSpeed = workers.reduce((s,w) => s + (w.execs_per_sec||0), 0);
-      const maxEdges   = Math.max(...workers.map(w => w.edges_found||0));
-      const summary = document.getElementById('workers-summary');
-      if (summary) summary.textContent =
-        `${workers.length} instances · ${fmt(totalSpeed)}/s total · ${maxEdges.toLocaleString()} edges`;
-
-      tbody.innerHTML = workers.map(w => {
-        const dot  = w.alive
-          ? '<span style="color:var(--green)">●</span>'
-          : '<span style="color:var(--muted)">○</span>';
-        const roleLabel = w.role === 'main'
-          ? '<span style="background:var(--orange);color:#000;font-size:.65rem;padding:1px 5px;border-radius:3px;font-weight:700">MAIN</span>'
-          : w.role === 'worker'
-            ? '<span style="background:#7c3aed;color:#fff;font-size:.65rem;padding:1px 5px;border-radius:3px">WORKER</span>'
-            : '<span style="color:var(--muted);font-size:.7rem">sec</span>';
-        const ageSec = w.last_update ? Math.round(Date.now()/1000 - w.last_update) : null;
-        const ageStr = ageSec !== null ? (ageSec < 60 ? `${ageSec}s` : `${Math.round(ageSec/60)}m`) : '–';
-        return `<tr>
-          <td class="mono" style="font-weight:600">${w.instance}</td>
-          <td>${roleLabel}</td>
-          <td style="color:var(--green)">${(w.edges_found||0).toLocaleString()}</td>
-          <td style="color:var(--cyan)">${(w.corpus_count||0).toLocaleString()}</td>
-          <td style="color:var(--purple)">${(w.pending_favs||0).toLocaleString()}</td>
-          <td style="color:var(--orange)">${(w.execs_per_sec||0).toFixed(1)}</td>
-          <td style="color:var(--muted)">${fmt(w.execs_done)}</td>
-          <td style="color:${w.saved_crashes>0?'var(--red)':'var(--fg)'}">${w.saved_crashes||'–'}</td>
-          <td style="color:var(--muted)">${w.cycles_done||0}</td>
-          <td>${dot} ${w.alive
-            ? `<span style="color:var(--green);font-size:.7rem">+${ageStr}</span>`
-            : `<span style="color:var(--muted);font-size:.7rem">idle ${ageStr}</span>`}
-          </td>
-        </tr>`;
-      }).join('');
-    }
-
-    // ── Remote sync workers panel ─────────────────────────────────────────────
-    const syncSection = document.getElementById('sync-workers-section');
-    const syncGrid    = document.getElementById('sync-workers-grid');
-    if (syncWorkers && syncWorkers.length && syncSection && syncGrid) {
-      syncSection.style.display = 'block';
-      syncGrid.innerHTML = syncWorkers.map(w => {
-        const alive = w.alive;
-        const dot   = alive ? '🟢' : '🔴';
-        const totalInst = (w.instances || []).length;
-        const totalEdges= Math.max(0, ...(w.instances||[]).map(i => i.edges_found||0));
-        const totalSpeed= (w.instances||[]).reduce((s,i) => s+(i.execs_per_sec||0), 0);
-        return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:.8rem">
-          <div style="font-weight:700;margin-bottom:4px">${dot} ${w.worker_name}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;color:var(--muted)">
-            <span>${totalInst} instances</span>
-            <span>${totalEdges.toLocaleString()} edges</span>
-            <span>${fmt(totalSpeed)}/s</span>
-            <span>↑${w.uploaded||0} ↓${w.downloaded||0}</span>
-          </div>
-          <div style="margin-top:4px;color:var(--muted);font-size:.72rem">${w.last_ping_str||'–'}</div>
-        </div>`;
-      }).join('');
-    } else if (syncSection) {
-      syncSection.style.display = 'none';
-    }
-
-  } catch(e) { console.warn('workers:', e); }
-}
-
-async function loadMachines() {
-  try {
-    const r = await fetch('/api/machines', { credentials: 'include' });
-    if (!r.ok) return;
-    const machines = await r.json();
-    const grid = document.getElementById('machines-grid');
-    if (!grid) return;
-
-    grid.innerHTML = machines.map(m => {
-      const live     = m.live  || {};
-      const mp4gen   = m.mp4gen || {};
-      const stats    = m.stats || {};
-      const isLocal  = m.url === 'local';
-      const ok       = m.status === 'ok' || isLocal;
-      const statusDot = ok
-        ? '<span style="color:#4caf50">●</span>'
-        : '<span style="color:#f44336">● unreachable</span>';
-
-      // Pull best available numbers
-      const execs   = live.execs_per_sec  || stats.execs_per_sec  || 0;
-      const edges   = live.edges_found    || stats.edges_found    || m.max_edges || 0;
-      const crashes = live.crashes_found  || stats.crashes        || m.total_crashes || 0;
-      const corpus  = live.corpus_count   || stats.corpus_count   || 0;
-      const pending = live.pending_favs   || stats.pending_favs   || 0;
-      const mp4_gen = mp4gen.total_generated || 0;
-      const mp4_con = mp4gen.total_contributed || 0;
-      const mp4_run = mp4gen.running ? '🟢' : '⚪';
-      const afl_instances = live.instances || stats.instances || '–';
-
-      const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M'
-                    : n >= 1e3  ? (n/1e3).toFixed(1)+'K' : String(n||0);
-
-      return `
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-weight:700;font-size:.95rem">${m.name}</span>
-            ${statusDot}
-            ${!isLocal ? `<a href="${m.url}" target="_blank" style="color:var(--blue);font-size:.75rem;margin-left:auto">open ↗</a>` : ''}
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:.8rem">
-            <div style="text-align:center">
-              <div style="font-size:1.1rem;font-weight:700;color:var(--blue)">${fmt(execs)}/s</div>
-              <div style="color:var(--muted)">execs</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:1.1rem;font-weight:700;color:#7c3aed">${fmt(edges)}</div>
-              <div style="color:var(--muted)">edges</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:1.1rem;font-weight:700;color:${crashes>0?'#f44336':'var(--fg)'}">${crashes}</div>
-              <div style="color:var(--muted)">crashes</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:.95rem;font-weight:600">${fmt(corpus)}</div>
-              <div style="color:var(--muted)">corpus</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:.95rem;font-weight:600">${afl_instances}</div>
-              <div style="color:var(--muted)">AFL instances</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:.95rem;font-weight:600">${fmt(pending)}</div>
-              <div style="color:var(--muted)">pending</div>
-            </div>
-          </div>
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap">
-            <span>${mp4_run} mp4gen: ${fmt(mp4_gen)} gen / ${mp4_con} contributed</span>
-            ${isLocal ? '<span style="color:#7c3aed">⬡ controller</span>' : '<span style="color:var(--blue)">⬡ worker</span>'}
-          </div>
-        </div>`;
-    }).join('');
-
-    const upd = document.getElementById('machines-updated');
-    if (upd) upd.textContent = 'updated ' + new Date().toLocaleTimeString();
-  } catch(e) { console.warn('machines:', e); }
-}
-
-setInterval(loadMachines, 15000);
-loadMachines();
-setInterval(loadWorkers, 8000);
-loadWorkers();
 </script>
 </body>
 </html>
