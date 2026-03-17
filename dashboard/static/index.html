@@ -448,7 +448,7 @@ function renderMachines(machines) {
   const maxEdges     = Math.max(...machines.map(m => m.edges_found || 0));
   const totalInst    = machines.reduce((s, m) => s + (m.instances || 0), 0);
   const totalCorpus  = Math.max(...machines.map(m => m.corpus_count || 0));
-  const totalExecs   = machines.reduce((s, m) => s + (m.execs_done || 0), 0);
+  const totalExecs   = machines.reduce((s, m) => s + ((m.live || {}).execs_done || m.execs_done || 0), 0);
   const totalCrashes = machines.reduce((s, m) => s + (m.total_crashes || 0), 0);
 
   // Bitmap from local live
@@ -497,7 +497,7 @@ function renderMachineCard(m) {
   const speed      = live.execs_per_sec || m.execs_per_sec || 0;
   const corpus     = live.corpus_count  || m.corpus_count  || 0;
   const instances  = live.instances     || m.instances     || 0;
-  const execs      = live.execs_done    || m.execs_done    || 0;
+  const execs      = live.execs_done    || (m.live || {}).execs_done || m.execs_done || 0;
   const crashes    = live.saved_crashes || m.total_crashes  || 0;
   const bitmap     = live.bitmap_cvg    || 0;
   const elapsed    = live.elapsed_sec   || 0;
