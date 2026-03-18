@@ -208,20 +208,44 @@
   /* ── Help tooltip ── */
   .help { cursor: help; color: var(--muted); font-size: 0.7rem; border-bottom: 1px dashed var(--muted); }
 
-  /* ── Mutator badges ── */
+  /* ── Mutator row ── */
   .mc-mutator-row {
-    padding: 7px 14px; border-top: 1px solid var(--border);
-    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 7px 16px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.75rem; cursor: default;
   }
-  .mut-badge {
-    display: inline-flex; align-items: center; gap: 4px;
+  .mc-mutator-row:hover { background: var(--surface2); }
+
+  .mut-status-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .mut-status-dot.on   { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .mut-status-dot.warn { background: var(--orange); }
+  .mut-status-dot.off  { background: var(--red); }
+
+  .mut-status-text {
+    font-weight: 700; font-size: 0.7rem; letter-spacing: .05em;
+    text-transform: uppercase; min-width: 100px;
+  }
+  .mut-status-text.on   { color: var(--green); }
+  .mut-status-text.warn { color: var(--orange); }
+  .mut-status-text.off  { color: var(--red); }
+
+  .mut-name { font-family: monospace; color: var(--text); font-size: 0.78rem; }
+  .mut-ver  {
+    background: rgba(88,166,255,.18); color: var(--blue);
+    border: 1px solid rgba(88,166,255,.4); border-radius: 4px;
+    padding: 2px 8px; font-family: monospace; font-size: 0.75rem; font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .mut-src  { color: var(--muted); font-size: 0.68rem; margin-left: auto; }
+  .mut-hint { color: var(--muted); font-size: 0.68rem; }
+
+  /* legacy badges (keep for fallback) */
+  .mut-badge { display: inline-flex; align-items: center; gap: 4px;
     font-size: 0.7rem; font-weight: 600; padding: 2px 8px;
-    border-radius: 10px; font-family: monospace;
-  }
-  .mut-loaded     { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
-  .mut-discovered { background: rgba(227,179,65,.12); color: var(--orange); border: 1px solid rgba(227,179,65,.3); }
-  .mut-none       { background: rgba(248,81,73,.1);   color: var(--red);    border: 1px solid rgba(248,81,73,.25); }
-  .mut-loading    { background: rgba(125,133,144,.1); color: var(--muted);  border: 1px solid var(--border); }
+    border-radius: 10px; font-family: monospace; }
+  .mut-loading { background: rgba(125,133,144,.1); color: var(--muted); border: 1px solid var(--border); }
 
   /* ── Footer ── */
   footer { padding: 16px 24px; text-align: center; color: var(--muted); font-size: 0.72rem; border-top: 1px solid var(--border); margin-top: 16px; }
@@ -547,20 +571,38 @@ function renderMachineCard(m) {
 
   // Mutator badges
   const mutInfo = m.mutators || null;
-  const mutHtml = mutInfo
-    ? (() => {
-        if (!mutInfo.mutators || mutInfo.mutators.length === 0) {
-          return `<div class="mc-mutator-row"><span class="mut-badge mut-none">⚠ no custom mutator</span></div>`;
-        }
-        const badges = mutInfo.mutators.map(mu => {
-          const cls = mu.loaded ? 'mut-loaded' : 'mut-discovered';
-          const icon = mu.loaded ? '🧬' : '📦';
-          const tip = mu.loaded ? `Loaded from ${mu.source}` : `Found at ${mu.path} (not confirmed loaded)`;
-          return `<span class="mut-badge ${cls}" title="${tip}">${icon} ${mu.name}</span>`;
-        }).join('');
-        return `<div class="mc-mutator-row">${badges}</div>`;
-      })()
-    : `<div class="mc-mutator-row"><span class="mut-badge mut-loading">⟳ loading mutator info…</span></div>`;
+  const liveVer = (m.live || {}).mutator_version || null;
+  const mutHtml = (() => {
+    if (!mutInfo) return `<div class="mc-mutator-row"><span class="mut-badge mut-loading">⟳ loading…</span></div>`;
+    if (!mutInfo.mutators || mutInfo.mutators.length === 0) {
+      // Still show version from live_stats if available
+      const verFallback = liveVer ? `<span class="mut-ver">${liveVer}</span>` : '';
+      return `<div class="mc-mutator-row">
+        <span class="mut-status-dot ${liveVer ? 'warn' : 'off'}"></span>
+        <span class="mut-status-text ${liveVer ? 'warn' : 'off'}">${liveVer ? 'NOT CONFIRMED' : 'No custom mutator'}</span>
+        ${verFallback}
+        ${!liveVer ? `<span class="mut-hint">set AFL_CUSTOM_MUTATOR_LIBRARY</span>` : ''}
+      </div>`;
+    }
+    const rows = mutInfo.mutators.map(mu => {
+      const loaded = mu.loaded;
+      // prefer describe from AFL++ logs; fallback to live_stats version; fallback to strings extraction
+      const verStr = mu.describe || liveVer || '';
+      const ver = verStr ? `<span class="mut-ver">${verStr}</span>` : '';
+      const src = loaded ? `confirmed via ${mu.source}` : `found at ${mu.path}`;
+      const hint = loaded
+        ? `✓ AFL++ confirmed: "Custom mutator installed successfully" · ${src}`
+        : `⚠ .so exists but AFL++ has not confirmed loading · ${src}`;
+      return `<div class="mc-mutator-row" title="${hint}">
+        <span class="mut-status-dot ${loaded ? 'on' : 'warn'}"></span>
+        <span class="mut-status-text ${loaded ? 'on' : 'warn'}">${loaded ? 'LOADED' : 'NOT CONFIRMED'}</span>
+        <span class="mut-name">${mu.name}</span>
+        ${ver}
+        <span class="mut-src">${mu.source}</span>
+      </div>`;
+    }).join('');
+    return rows;
+  })();
 
   return `
   <div class="machine-card ${aliveClass}">

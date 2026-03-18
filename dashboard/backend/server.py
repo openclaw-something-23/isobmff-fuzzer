@@ -644,6 +644,7 @@ async def get_mutators(request: Request):
     # 2. Scan fuzzer logs for "Loaded custom mutator" messages
     loaded_from_log: set = set()
     import re as _re
+    log_describe: dict = {}  # path -> describe string
     try:
         runs_dir = os.path.join(RESULTS_DIR, "runs")
         if os.path.isdir(runs_dir):
@@ -656,15 +657,27 @@ async def get_mutators(request: Request):
                     fpath = os.path.join(latest, fname)
                     try:
                         with open(fpath, "rb") as f:
-                            chunk = f.read(16384)  # read first 16KB
+                            chunk = f.read(16384)
                         text = chunk.decode("utf-8", errors="replace")
-                        # Match AFL++ log line (may have ANSI escape codes)
                         clean = _re.sub(r'\x1b\[[0-9;]*m', '', text)
-                        m2 = _re.search(
+                        # Confirmed load
+                        m_load = _re.search(
                             r"Loading custom mutator library from '([^']+)'", clean
                         )
-                        if m2:
-                            loaded_from_log.add(m2.group(1))
+                        if m_load:
+                            loaded_from_log.add(m_load.group(1))
+                        # Confirmed installed
+                        m_ok = _re.search(
+                            r"Custom mutator '([^']+)' installed successfully", clean
+                        )
+                        if m_ok:
+                            loaded_from_log.add(m_ok.group(1))
+                        # describe string (afl_custom_describe result)
+                        m_desc = _re.search(
+                            r"Custom mutator describe: ([^\n\r]+)", clean
+                        )
+                        if m_desc and m_load:
+                            log_describe[m_load.group(1)] = m_desc.group(1).strip()
                     except Exception:
                         pass
     except Exception:
@@ -672,13 +685,23 @@ async def get_mutators(request: Request):
 
     for path in loaded_from_log:
         name = os.path.splitext(os.path.basename(path))[0]
+        describe = log_describe.get(path, "")
         if not any(m["path"] == path for m in mutators):
             mutators.append({
                 "name": name,
                 "path": path,
                 "loaded": True,
                 "source": "log",
+                "describe": describe,
             })
+        else:
+            # Update existing entry with log confirmation
+            for m in mutators:
+                if m["path"] == path:
+                    m["loaded"] = True
+                    m["source"] = "log"
+                    if describe:
+                        m["describe"] = describe
 
     # 3. Check well-known default paths if nothing found yet
     if not mutators:
@@ -694,6 +717,23 @@ async def get_mutators(request: Request):
                     "source": "discovered",
                 })
                 break
+
+    # Try to extract version string from .so binary
+    # Uses pure Python (no `strings` binary needed) — scans for isobmff_v\d+ pattern
+    for m in mutators:
+        if "describe" not in m or not m["describe"]:
+            try:
+                with open(m["path"], "rb") as fh:
+                    raw = fh.read()
+                # Extract printable ASCII runs ≥4 chars and look for version tag
+                import re as _re2
+                for hit in _re2.finditer(rb'isobmff_v\d[\x20-\x7e]*', raw):
+                    ver = hit.group(0).decode("ascii", errors="replace").strip().rstrip('\x00')
+                    if ver:
+                        m["describe"] = ver
+                        break
+            except Exception:
+                pass
 
     return {
         "machine": _MACHINE_NAME,

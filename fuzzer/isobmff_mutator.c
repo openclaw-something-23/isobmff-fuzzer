@@ -60,6 +60,12 @@ typedef struct {
 
 #define MAX_BOXES 1024
 
+/* ── Mutator version ────────────────────────────────────────────────────── */
+#ifndef MUTATOR_BUILD_DATE
+#define MUTATOR_BUILD_DATE __DATE__
+#endif
+#define MUTATOR_VERSION "isobmff_v3"
+
 /* ── Mutator state ──────────────────────────────────────────────────────── */
 #define N_STRATEGIES 36
 
@@ -1281,5 +1287,5 @@ uint8_t afl_custom_queue_new_entry(void *data,
 /* ── Human-readable mutator name for AFL++ status screen ─────────────────── */
 const char *afl_custom_describe(void *data, size_t max_description_len) {
     (void)data; (void)max_description_len;
-    return "isobmff_v3";
+    return MUTATOR_VERSION " built:" MUTATOR_BUILD_DATE;
 }

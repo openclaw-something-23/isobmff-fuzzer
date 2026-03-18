@@ -110,6 +110,7 @@ TIME_FLAG=""
 AFL_IGNORE_SEED_PROBLEMS=1 \
 AFL_MAP_SIZE=262144 \
 AFL_AUTORESUME=1 \
+AFL_CUSTOM_MUTATOR_LIBRARY="${MUTATOR_SO}" \
 ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
 UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
 afl-fuzz \
@@ -132,8 +133,10 @@ if [ "${N_CORES}" -gt 1 ]; then
     sleep 10   # wait for main to finish dry-run
     for i in $(seq 1 $(( N_CORES - 1 ))); do
         AFL_IGNORE_SEED_PROBLEMS=1 \
+        AFL_MAP_SIZE=262144 \
         AFL_AUTORESUME=1 \
         AFL_IMPORT_FIRST=1 \
+        AFL_CUSTOM_MUTATOR_LIBRARY="${MUTATOR_SO}" \
         ASAN_OPTIONS="abort_on_error=1:detect_leaks=0:allocator_may_return_null=1:symbolize=0" \
         UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
         afl-fuzz \
@@ -185,6 +188,23 @@ if sync_dir.is_dir():
             if d.name not in ("main",) and not (d.name.startswith("s") and d.name[1:].isdigit()):
                 worker_instances += 1
 
+
+# Extract mutator version from .so binary
+import subprocess
+mutator_version = None
+for candidate in ["/results/isobmff_mutator.so", "/fuzzer/isobmff_mutator.so"]:
+    if os.path.isfile(candidate):
+        try:
+            res = subprocess.run(["strings", candidate], capture_output=True, text=True, timeout=3)
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if line.startswith("isobmff_v"):
+                    mutator_version = line
+                    break
+        except Exception:
+            pass
+        break
+
 live = {
     "run_id":           run_id,
     "elapsed_sec":      int(time.time()) - start_ts,
@@ -201,6 +221,7 @@ live = {
     "worker_instances": worker_instances,
     "updated_at":       int(time.time()),
     "mode":             "controller",
+    "mutator_version":  mutator_version,
 }
 json.dump(live, open("/results/live_stats.json", "w"), indent=2)
 PYEOF
